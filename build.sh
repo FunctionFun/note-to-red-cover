@@ -1,0 +1,47 @@
+#
+# 参考 note-to-red 项目代码
+# Original Project: https://github.com/Yeban8090/note-to-red
+# Copyright (c) 2025 Yeban8090
+# Licensed under the MIT License
+# 
+# 当前项目版权声明
+# Copyright (c) 2025 FunctionFun
+# Licensed under the MIT License (see project root LICENSE file for details)
+#
+
+#!/bin/bash
+
+# 获取版本号
+version=$(grep '"version"' manifest.json | cut -d '"' -f 4)
+zip_name="note-to-red-${version}.zip"
+
+# 检查目标文件是否存在
+if [ -f "../../${zip_name}" ]; then
+    read -p "文件 ${zip_name} 已存在，是否覆盖？(y/n) " answer
+    if [ "$answer" != "y" ]; then
+        echo "打包已取消"
+        exit 1
+    fi
+fi
+
+# 创建临时目录
+mkdir -p ../temp/note-to-red
+
+# 复制必要文件
+cp main.js manifest.json styles.css ../temp/note-to-red/
+cp -r assets ../temp/note-to-red/
+
+# 切换到临时目录的上级目录
+cd ../temp
+
+# 创建 zip 文件
+zip -r "${zip_name}" note-to-red
+
+# 移动 zip 文件到上级目录
+mv "${zip_name}" ../../
+
+# 清理临时目录
+cd ..
+rm -rf temp
+
+echo "打包完成：${zip_name}"

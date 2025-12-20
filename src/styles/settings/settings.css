@@ -1,0 +1,115 @@
+/* 整体容器 */
+.red-settings {
+    margin: 0 auto;
+    padding: 20px;
+    background-color: var(--background-primary);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 标题样式 */
+.red-settings h2 {
+    margin: 20px 0;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--background-modifier-border);
+    font-size: 1.6em;
+    color: var(--text-normal);
+    width: 100%;
+}
+
+/* 通用设置区块样式 */
+.red-settings .settings-section {
+    margin-bottom: 2rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    overflow-y: auto;
+    background-color: var(--background-secondary);
+}
+
+.red-settings .settings-section-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 1.2rem;
+    background-color: var(--background-secondary);
+    transition: background-color 0.3s ease;
+}
+
+.red-settings .settings-section-header:hover {
+    background-color: var(--background-secondary-alt);
+}
+
+.red-settings .settings-section-header h4 {
+    margin: 0;
+    flex: 1;
+    font-size: 1.2em;
+    color: var(--text-normal);
+}
+
+.red-settings .settings-section-toggle {
+    margin-right: 0.5rem;
+    color: var(--text-muted);
+}
+
+.red-settings .settings-section-content {
+    display: none;
+    padding: 20px 10px;
+    background-color: var(--background-primary);
+}
+
+.red-settings .settings-section.is-expanded .settings-section-content {
+    display: block;
+}
+
+
+
+/* 设置子区域折叠样式 */
+.red-settings .red-settings-subsection {
+    margin: 0 12px 12px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    overflow-y: auto;
+}
+
+.red-settings .red-settings-subsection-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.8rem 1rem;
+    background-color: var(--background-primary);
+    transition: background-color 0.3s ease;
+}
+
+.red-settings .red-settings-subsection-header:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.red-settings .red-settings-subsection-header h3 {
+    margin: 0;
+    flex: 1;
+    font-size: 1.1em;
+    color: var(--text-normal);
+}
+
+.red-settings .red-settings-subsection-toggle {
+    margin-right: 0.5rem;
+    color: var(--text-muted);
+}
+
+.red-settings .red-settings-subsection-content {
+    display: none;
+    padding: 1rem;
+    margin: 0 20px;
+    background-color: var(--background-primary);
+}
+
+.red-settings .red-settings-subsection.is-expanded .red-settings-subsection-content {
+    display: block;
+}
+
+.red-settings-divider {
+    margin: 15px 0;
+    border: none;
+    height: 1px;
+    background-color: var(--background-modifier-border);
+  }

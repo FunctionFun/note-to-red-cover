@@ -1,0 +1,46 @@
+# vscode
+.vscode 
+
+# Intellij
+*.iml
+.idea
+
+# npm
+node_modules
+npm-debug.log
+
+# Don't include the compiled main.js file in the repo.
+# They should be uploaded to GitHub releases instead.
+main.js
+
+# Exclude sourcemaps
+*.map
+
+# obsidian
+data.json
+
+# Exclude macOS Finder (System Explorer) View States
+.DS_Store
+
+.obsidian/*
+
+# 编译产物
+dist/
+main.js
+main.js.map
+styles.css
+styles.css.map
+
+# 类型文件（如果用tsc生成）
+*.d.ts
+!src/types/*.d.ts
+
+# 测试库（避免提交大文件）
+test-vault/
+
+# 编辑器配置
+.idea/
+.vscode/
+*.swp
+
+
