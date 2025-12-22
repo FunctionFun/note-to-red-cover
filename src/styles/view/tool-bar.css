@@ -1,9 +1,10 @@
 /* 状态栏样式覆盖 */
 .red-view-content {
+    position: relative;
     width: 100%;
     height: 100%;
     padding: 10px 10px 0 10px;
-    overflow: auto;
+    overflow: hidden;
     background: var(--background-primary);
 }
 
@@ -18,8 +19,13 @@
 }
 
 .red-bottom-bar {
+    position: absolute;
+    left: 0;
     bottom: 0;
+    width: 100%;
+    padding: 10px 10px 40px 10px;
     border-top: 2px solid var(--background-modifier-border);
+    background-color: #ffffff;
 }
 
 /* 控件组布局 */

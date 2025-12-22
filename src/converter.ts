@@ -49,7 +49,7 @@ export class RedConverter {
         return !!element.textContent && element.textContent.trim().length > 0;
     }
 
-    static formatContent(element: HTMLElement): void {
+    static async formatContent(element: HTMLElement, currentFilePath: string = ''): Promise<void> {
         // 获取所有内容
         // 直接使用element作为内容源，因为MarkdownRenderer直接渲染到该元素中
         
@@ -66,6 +66,9 @@ export class RedConverter {
             imagePreview.style.width = '400px';
             imagePreview.style.height = '600px';
             imagePreview.style.backgroundColor = 'transparent';
+            // 设置默认transform和transform-origin值
+            imagePreview.style.transform = 'scale(0.7)';
+            imagePreview.style.transformOrigin = 'top center';
         
 
             
@@ -110,6 +113,9 @@ export class RedConverter {
         // 设置默认背景色，确保即使没有内容也能看到预览区域
         imagePreview.style.backgroundColor = 'transparent';
         imagePreview.style.position = 'relative';
+        // 设置默认transform和transform-origin值
+        imagePreview.style.transform = 'scale(0.7)';
+        imagePreview.style.transformOrigin = 'top center';
         
 
         
@@ -148,7 +154,7 @@ export class RedConverter {
         const containerWidth = 400;
         
         // 处理整个内容，不按标题分割
-        const section = this.createContentSection(element, containerWidth);
+        const section = await this.createContentSection(element, containerWidth, currentFilePath);
         if (section) {
             contentContainer.appendChild(section);
         } else {
@@ -174,32 +180,41 @@ export class RedConverter {
         element.dispatchEvent(copyEvent);
     }
 
-    private static createContentSection(markdownContent: Element, containerWidth: number = 450): HTMLElement | null {
+    private static async createContentSection(markdownContent: Element, containerWidth: number = 450, currentFilePath: string = ''): Promise<HTMLElement | null> {
         const settings = this.plugin?.settingsManager?.getSettings();
+        
+        // 先克隆markdownContent，避免修改原始DOM
+        const clonedContent = markdownContent.cloneNode(true) as Element;
+        
+        // 在克隆的内容上处理图片，将internal-embed转换为img标签
+        await RedConverter.processImages(clonedContent, currentFilePath);
         
         // 获取所有内容元素（处理嵌套情况，确保能获取到h1等标题元素）
         let content: Element[] = [];
         
         // 递归函数：处理元素及其子元素
         const processElement = (element: Element) => {
-            // 如果是div容器且有子元素，递归处理其子元素
-            if (element.tagName === 'DIV' && element.children.length > 0) {
+            // 检查元素是否包含图片或图片嵌入
+            const hasImage = element.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
+            
+            // 如果是div容器且有子元素，且不包含图片，递归处理其子元素
+            if (element.tagName === 'DIV' && element.children.length > 0 && !hasImage) {
                 Array.from(element.children).forEach(child => {
                     processElement(child);
                 });
             } else {
-                // 否则直接添加元素
-                content.push(element.cloneNode(true) as Element);
+                // 如果是div但包含图片，或者不是div容器，直接添加到内容中
+                content.push(element);
             }
         };
         
-        // 检查直接子元素
-        Array.from(markdownContent.children).forEach(child => {
+        // 检查克隆内容的直接子元素
+        Array.from(clonedContent.children).forEach(child => {
             processElement(child);
         });
         
         // 如果没有子元素，但有文本内容，创建一个div元素来包含文本内容
-        const textContent = markdownContent.textContent?.trim();
+        const textContent = clonedContent.textContent?.trim();
         if (content.length === 0 && textContent && textContent.length > 0) {
             const textContainer = document.createElement('div');
             textContainer.textContent = textContent;
@@ -481,8 +496,12 @@ export class RedConverter {
         
         // 添加最后一页（确保只添加非空页面）
         if (currentPage.length > 0) {
-            // 检查页面内容是否有实际文本
+            // 检查页面内容是否有实际文本或图片
             const hasActualContent = currentPage.some(el => {
+                // 检查是否包含图片
+                if (el.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image')) {
+                    return true;
+                }
                 // 对于列表和代码块，检查是否有内容
                 if (el.tagName === 'OL' || el.tagName === 'UL') {
                     return Array.from(el.querySelectorAll('li')).some(li => (li.textContent?.trim() || '').length > 0);
@@ -508,14 +527,27 @@ export class RedConverter {
         return pages.filter(page => {
             if (page.length === 0) return false;
             
-            // 检查页面是否有实际内容
+            // 检查页面是否有实际内容（文本或图片）
             return page.some(el => {
-                if (el.tagName === 'OL' || el.tagName === 'UL') {
-                    return Array.from(el.querySelectorAll('li')).some(li => (li.textContent?.trim() || '').length > 0);
+                // 检查是否包含图片
+                if (el.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image')) {
+                    return true;
                 }
+                
+                if (el.tagName === 'OL' || el.tagName === 'UL') {
+                    return Array.from(el.querySelectorAll('li')).some(li => {
+                        // 检查列表项是否有文本或包含图片
+                        if (li.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image')) {
+                            return true;
+                        }
+                        return (li.textContent?.trim() || '').length > 0;
+                    });
+                }
+                
                 if (el.tagName === 'PRE') {
                     return (el.textContent?.trim() || '').length > 0;
                 }
+                
                 return (el.textContent?.trim() || '').length > 0;
             });
         });
@@ -531,8 +563,12 @@ export class RedConverter {
         for (let i = 0; i < content.length; i++) {
             const el = content[i];
             
-            // 检查元素是否有内容
-            if (!el.textContent?.trim()?.length) continue;
+            // 检查元素是否有内容或包含图片
+            const hasTextContent = (el.textContent?.trim() || '').length > 0;
+            const hasImage = el.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
+            
+            // 如果元素既没有文本内容也没有图片，跳过
+            if (!hasTextContent && !hasImage) continue;
             
             // 1. 检查是否是代码块
             if (el.tagName === 'PRE') {
@@ -591,10 +627,12 @@ export class RedConverter {
             i++;
         }
         
-        // 过滤掉空列表项
-        const nonEmptyListItems = allListItems.filter(item => 
-            (item.textContent?.trim() || '').length > 0
-        );
+        // 过滤掉空列表项（但保留包含图片的列表项）
+        const nonEmptyListItems = allListItems.filter(item => {
+            const hasTextContent = (item.textContent?.trim() || '').length > 0;
+            const hasImage = item.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
+            return hasTextContent || hasImage;
+        });
         
         // 如果没有非空列表项，返回null
         if (nonEmptyListItems.length === 0) {
@@ -832,13 +870,18 @@ export class RedConverter {
         // 获取所有列表项
         const listItems = Array.from(listElement.querySelectorAll('li'));
         
-        // 过滤掉空列表项
-        const nonEmptyListItems = listItems.filter(item => (item.textContent?.trim() || '').length > 0);
+        // 过滤掉空列表项（但保留包含图片的列表项）
+        const nonEmptyListItems = listItems.filter(item => {
+            const hasTextContent = (item.textContent?.trim() || '').length > 0;
+            const hasImage = item.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
+            return hasTextContent || hasImage;
+        });
         
         // 如果没有非空列表项且列表元素没有内容，跳过
         if (nonEmptyListItems.length === 0) {
             const hasContent = (listElement.textContent?.trim() || '').length > 0;
-            if (hasContent) {
+            const hasImage = listElement.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
+            if (hasContent || hasImage) {
                 currentPage.push(listElement);
             }
             return;
@@ -969,9 +1012,10 @@ export class RedConverter {
      */
     private static handleLongListItem(listItem: Element, isOrderedList: boolean, startIndex: number, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
         const listContent = listItem.textContent || '';
+        const hasImage = listItem.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
         
-        // 如果列表项内容为空，直接返回
-        if (!listContent.trim()) return;
+        // 如果列表项内容为空且没有图片，直接返回
+        if (!listContent.trim() && !hasImage) return;
         
         // 创建临时列表项，用于测量高度
         const tempListItem = listItem.cloneNode(true) as HTMLElement;
@@ -1179,15 +1223,18 @@ export class RedConverter {
             if (el.tagName === 'PRE') {
                 return (el.textContent?.trim() || '').length > 0;
             }
-            return (el.textContent?.trim() || '').length > 0;
+            // 检查是否有文本内容或包含图片
+            return (el.textContent?.trim() || '').length > 0 || 
+                   el.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image') !== null;
         });
         
         if (!hasActualContent) return;
         
         // 逐个处理分组内的元素，支持单个元素的分页
         for (const element of group.elements) {
-            // 检查元素是否为空
-            if ((element.textContent?.trim() || '').length === 0) {
+            // 检查元素是否为空（同时检查是否包含图片）
+            if ((element.textContent?.trim() || '').length === 0 && 
+                element.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image') === null) {
                 continue;
             }
             
@@ -1366,36 +1413,371 @@ export class RedConverter {
             }
         });
 
-        // 处理图片
-        container.querySelectorAll('span.internal-embed[alt][src]').forEach(async el => {
-            const originalSpan = el as HTMLElement;
-            const src = originalSpan.getAttribute('src');
-            const alt = originalSpan.getAttribute('alt');
-            
-            if (!src) return;
-            
-            try {
-                const linktext = src.split('|')[0];
-                const file = this.app.metadataCache.getFirstLinkpathDest(linktext, '');
-                if (file) {
-                    const absolutePath = this.app.vault.adapter.getResourcePath(file.path);
-                    const newImg = document.createElement('img');
-                    newImg.src = absolutePath;
-                    if (alt) newImg.alt = alt;
-                    newImg.className = 'red-image';
-                    originalSpan.parentNode?.replaceChild(newImg, originalSpan);
-                }
-            } catch (error) {
-                console.error('图片处理失败:', error);
+        // 处理图片（已在createContentSection中预处理）
+        container.querySelectorAll('img.red-image').forEach(img => {
+            img.classList.add('red-img');
+        });
+        
+        // 处理Markdown中直接的img标签
+        container.querySelectorAll('img').forEach(img => {
+            if (!img.classList.contains('red-image')) {
+                img.classList.add('red-img');
             }
         });
+    }
 
+    /**
+     * 预处理图片，将span.internal-embed转换为img标签
+     * 此方法必须在内容分割之前调用，以便分割逻辑能正确计算图片高度
+     */
+    private static processImages(content: Element, currentFilePath: string): Promise<void> {
+        console.log('=== 开始图片处理 ===');
+        console.log('处理内容类型:', content.tagName);
+        console.log('处理内容结构:', content.outerHTML);
+        
+        // 检查this.app和this.plugin是否存在
+        if (!this.app) {
+            console.error('this.app不存在，无法处理图片');
+            return Promise.resolve();
+        }
+        
+        if (!this.app.metadataCache) {
+            console.error('this.app.metadataCache不存在，无法处理图片');
+            return Promise.resolve();
+        }
+        
+        if (!this.app.vault || !this.app.vault.adapter) {
+            console.error('this.app.vault或this.app.vault.adapter不存在，无法处理图片');
+            return Promise.resolve();
+        }
+        
+        // 使用更广泛的选择器，包括可能的div.internal-embed和其他嵌入元素
+        const embedElements = content.querySelectorAll('span.internal-embed, div.internal-embed, .markdown-image, [data-type="file-embed"], [data-embed-type="image"]');
+        
+        // 特别检查带有src或data-href属性的内部嵌入元素
+        const internalEmbedElements = content.querySelectorAll('span[data-href^="[["], div[data-href^="[["]');
+        console.log(`发现 ${internalEmbedElements.length} 个带有data-href="[[...]]"的元素`);
+        
+        // 检查是否有带有data-link属性的元素，这是Obsidian内部链接的常见属性
+        const dataLinkElements = content.querySelectorAll('[data-link]');
+        console.log(`发现 ${dataLinkElements.length} 个带有data-link属性的元素`);
+        
+        console.log(`发现 ${embedElements.length} 个嵌入元素`);
+        
+        // 也尝试查找所有的img元素
+        const imgElements = content.querySelectorAll('img');
+        console.log(`发现 ${imgElements.length} 个img元素`);
+        
+        // 检查是否有任何带有markdown-image类的元素
+        const markdownImages = content.querySelectorAll('.markdown-image');
+        console.log(`发现 ${markdownImages.length} 个markdown-image元素`);
+        
+        // 处理所有可能的嵌入元素
+        const allEmbedElements = [...Array.from(embedElements), ...Array.from(internalEmbedElements)];
+        console.log(`总共处理 ${allEmbedElements.length} 个嵌入元素`);
+        
+        // 创建图片加载Promise数组
+        const imageLoadPromises: Promise<void>[] = [];
+        
+        // 转换为数组以便使用forEach
+        allEmbedElements.forEach((el, index) => {
+            const originalEmbed = el as HTMLElement;
+            
+            console.log(`\n=== 处理第 ${index + 1} 个嵌入元素 ===`);
+            console.log('Embed element found:', originalEmbed.outerHTML);
+            console.log('Embed element tagName:', originalEmbed.tagName);
+            console.log('Embed element classList:', originalEmbed.classList);
+            
+            // 尝试从不同位置获取src信息
+            let src = originalEmbed.getAttribute('src') || 
+                      originalEmbed.getAttribute('data-href') ||
+                      originalEmbed.getAttribute('data-link') || // 检查Obsidian内部链接的data-link属性
+                      originalEmbed.getAttribute('data-src') || // 直接检查data-src
+                      originalEmbed.querySelector('img')?.getAttribute('src') ||
+                      originalEmbed.querySelector('img')?.getAttribute('data-src') ||
+                      originalEmbed.querySelector('img')?.getAttribute('data-href') ||
+                      originalEmbed.querySelector('img')?.getAttribute('data-link') ||
+                      originalEmbed.dataset.src ||
+                      originalEmbed.dataset.link ||
+                      originalEmbed.dataset.href;
+            
+            // 检查是否有data-embed-src属性
+            if (!src) {
+                src = originalEmbed.getAttribute('data-embed-src') || undefined;
+            }
+            
+            // 检查是否有background-image样式中的url
+            if (!src) {
+                const bgStyle = originalEmbed.style.backgroundImage;
+                if (bgStyle && bgStyle.startsWith('url(')) {
+                    const urlMatch = bgStyle.match(/url\((['"]?)(.*?)\1\)/);
+                    if (urlMatch && urlMatch[2]) {
+                        src = urlMatch[2];
+                        console.log('从background-image提取的URL:', src);
+                    }
+                }
+            }
+            
+            // 检查子元素中的background-image
+            if (!src) {
+                const bgImgEl = originalEmbed.querySelector('[style*="background-image"]');
+                if (bgImgEl) {
+                    const bgStyle = (bgImgEl as HTMLElement).style.backgroundImage;
+                    if (bgStyle && bgStyle.startsWith('url(')) {
+                        const urlMatch = bgStyle.match(/url\((['"]?)(.*?)\1\)/);
+                        if (urlMatch && urlMatch[2]) {
+                            src = urlMatch[2];
+                            console.log('从子元素background-image提取的URL:', src);
+                        }
+                    }
+                }
+            }
+            
+            // 特别处理Obsidian内部图片链接格式，如![[图片名称.png]]
+            if (src && (src.startsWith('[') || src.startsWith('!['))) {
+                console.log('检测到Obsidian内部链接格式:', src);
+                // 提取链接内容
+                const match = src.match(/!*\[\[(.*?)\]\]/);
+                if (match) {
+                    src = match[1];
+                    console.log('提取的实际路径:', src);
+                }
+            }
+            
+            // 移除URL中的协议和域名部分，只保留路径（如果是绝对URL）
+            if (src && (src.startsWith('http://') || src.startsWith('https://'))) {
+                console.log('检测到外部URL，保留原样:', src);
+            } else {
+                // 处理相对路径，移除可能的../或./前缀
+                if (src) {
+                    // 移除路径中的../和./
+                    const pathParts = src.split('/').filter(part => part && part !== '.');
+                    const cleanedPath: string[] = [];
+                    
+                    for (const part of pathParts) {
+                        if (part === '..' && cleanedPath.length > 0) {
+                            cleanedPath.pop();
+                        } else {
+                            cleanedPath.push(part);
+                        }
+                    }
+                    
+                    if (cleanedPath.length > 0) {
+                        src = cleanedPath.join('/');
+                        console.log('清理后的路径:', src);
+                    }
+                }
+            }
+            
+            // 检查是否有文件名（包含扩展名）
+            if (src && !src.includes('.')) {
+                console.log('路径可能缺少扩展名:', src);
+                // 尝试添加常见的图片扩展名
+                const commonExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'];
+                for (const ext of commonExtensions) {
+                    const testPath = src + ext;
+                    const testFile = this.app.metadataCache.getFirstLinkpathDest(testPath, currentFilePath);
+                    if (testFile) {
+                        src = testPath;
+                        console.log('找到带扩展名的文件:', src);
+                        break;
+                    }
+                }
+            }
+            
+            const alt = originalEmbed.getAttribute('alt') || 
+                       originalEmbed.querySelector('img')?.getAttribute('alt') || '';
+            
+            console.log('Extracted src:', src);
+            console.log('Extracted alt:', alt);
+            
+            if (!src) {
+                console.log('未找到有效src，跳过该元素');
+                return;
+            }
+            
+            try {
+                // 解析图片路径，移除可能的管道符和参数
+                const linktext = src.split('|')[0];
+                
+                console.log('Processing linktext:', linktext);
+                
+                // 获取图片文件
+                const file = this.app.metadataCache.getFirstLinkpathDest(linktext, currentFilePath);
+                
+                console.log('Found file:', file);
+                
+                if (file) {
+                    console.log('找到图片文件:', file.path, file.name);
+                    
+                    // 获取图片的绝对路径
+                    const absolutePath = this.app.vault.adapter.getResourcePath(file.path);
+                    
+                    console.log('生成的绝对路径:', absolutePath);
+                    
+                    // 创建img元素
+                    const newImg = document.createElement('img');
+                    newImg.src = absolutePath;
+                    newImg.alt = alt;
+                    newImg.className = 'red-image red-img';
+                    
+                    // 设置图片样式，确保它能正确显示
+                    newImg.style.maxWidth = '100%';
+                    newImg.style.height = 'auto';
+                    newImg.style.display = 'block';
+                    newImg.style.margin = '10px auto';
+                    
+                    console.log('创建的新img元素:', newImg.outerHTML);
+                    
+                    // 替换原始的embed元素
+                    if (originalEmbed.parentNode) {
+                        originalEmbed.parentNode.replaceChild(newImg, originalEmbed);
+                        console.log('成功替换嵌入元素为img标签');
+                    } else {
+                        console.warn('嵌入元素的父节点为null，无法替换');
+                        // 如果没有父节点，尝试直接添加到内容中
+                        content.appendChild(newImg);
+                        console.log('尝试直接将图片添加到内容中');
+                    }
+                    
+                    // 添加图片加载Promise
+                    const loadPromise = new Promise<void>((resolve) => {
+                        // 如果图片已经加载完成
+                        if (newImg.complete) {
+                            resolve();
+                        } else {
+                            // 等待图片加载完成
+                            newImg.onload = () => {
+                                console.log('图片加载完成:', absolutePath);
+                                resolve();
+                            };
+                            // 图片加载失败时也 resolve，避免阻塞，但要显示错误提示
+                            newImg.onerror = () => {
+                                console.error('图片加载失败:', absolutePath);
+                                // 创建错误提示元素
+                                const errorDiv = document.createElement('div');
+                                errorDiv.className = 'red-image-error';
+                                errorDiv.textContent = `找不到图片: ${linktext}`;
+                                errorDiv.style.cssText = `
+                                    width: 100%;
+                                    height: 100px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    border: 1px dashed #ff4d4f;
+                                    color: #ff4d4f;
+                                    background: #fff1f0;
+                                    border-radius: 4px;
+                                    padding: 10px;
+                                    box-sizing: border-box;
+                                `;
+                                // 替换失败的图片元素
+                                if (newImg.parentNode) {
+                                    newImg.parentNode.replaceChild(errorDiv, newImg);
+                                }
+                                resolve();
+                            };
+                        }
+                    });
+                    
+                    imageLoadPromises.push(loadPromise);
+                } else {
+                    console.warn('未找到图片文件:', linktext);
+                    
+                    // 尝试直接使用linktext作为路径（如果是相对路径）
+                    try {
+                        const absolutePath = this.app.vault.adapter.getResourcePath(linktext);
+                        console.log('尝试直接生成绝对路径:', absolutePath);
+                        
+                        // 创建img元素
+                        const newImg = document.createElement('img');
+                        newImg.src = absolutePath;
+                        newImg.alt = alt;
+                        newImg.className = 'red-image red-img';
+                        
+                        // 设置图片样式，确保它能正确显示
+                        newImg.style.maxWidth = '100%';
+                        newImg.style.height = 'auto';
+                        newImg.style.display = 'block';
+                        newImg.style.margin = '10px auto';
+                        
+                        console.log('创建的新img元素:', newImg.outerHTML);
+                        
+                        // 替换原始的embed元素
+                        if (originalEmbed.parentNode) {
+                            originalEmbed.parentNode.replaceChild(newImg, originalEmbed);
+                            console.log('成功使用直接路径替换嵌入元素为img标签');
+                        } else {
+                            console.warn('嵌入元素的父节点为null，无法替换');
+                            // 如果没有父节点，尝试直接添加到内容中
+                            content.appendChild(newImg);
+                            console.log('尝试直接将图片添加到内容中');
+                        }
+                        
+                        // 添加图片加载Promise
+                        const loadPromise = new Promise<void>((resolve) => {
+                            // 如果图片已经加载完成
+                            if (newImg.complete) {
+                                resolve();
+                            } else {
+                                // 等待图片加载完成
+                                newImg.onload = () => {
+                                    console.log('图片加载完成:', absolutePath);
+                                    resolve();
+                                };
+                                // 图片加载失败时也 resolve，避免阻塞，但要显示错误提示
+                                newImg.onerror = () => {
+                                    console.error('图片加载失败:', absolutePath);
+                                    // 创建错误提示元素
+                                    const errorDiv = document.createElement('div');
+                                    errorDiv.className = 'red-image-error';
+                                    errorDiv.textContent = `找不到图片: ${linktext}`;
+                                    errorDiv.style.cssText = `
+                                        width: 100%;
+                                        height: 100px;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        border: 1px dashed #ff4d4f;
+                                        color: #ff4d4f;
+                                        background: #fff1f0;
+                                        border-radius: 4px;
+                                        padding: 10px;
+                                        box-sizing: border-box;
+                                    `;
+                                    // 替换失败的图片元素
+                                    if (newImg.parentNode) {
+                                        newImg.parentNode.replaceChild(errorDiv, newImg);
+                                    }
+                                    resolve();
+                                };
+                            }
+                        });
+                        
+                        imageLoadPromises.push(loadPromise);
+                    } catch (directError) {
+                        console.error('直接路径生成失败:', directError);
+                    }
+                }
+            } catch (error) {
+                console.error('图片处理错误:', error);
+            }
+        });
+        
         // 处理引用块
-        container.querySelectorAll('blockquote').forEach(el => {
+        content.querySelectorAll('blockquote').forEach(el => {
             el.classList.add('red-blockquote');
             el.querySelectorAll('p').forEach(p => {
                 p.classList.add('red-blockquote-p');
             });
+        });
+        
+        // 等待所有图片加载完成
+        return Promise.all(imageLoadPromises).then(() => {
+            // 最后再次检查是否有图片被处理
+            const finalImgElements = content.querySelectorAll('img');
+            console.log(`图片处理完成后，内容中共有 ${finalImgElements.length} 个img元素`);
+            return Promise.resolve();
         });
     }
 }

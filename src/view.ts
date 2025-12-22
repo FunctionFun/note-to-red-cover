@@ -81,6 +81,34 @@ export class RedView extends ItemView {
         // 初始化容器宽度记录
         this.lastContainerWidth = this.previewEl.clientWidth;
 
+        // 设置右侧插件面板的默认宽度为340px
+        this.app.workspace.onLayoutReady(() => {
+            const leaf = this.leaf;
+            const layout = this.app.workspace.getLayout();
+            
+            // 检查是否为右侧面板的leaf
+            if (layout.right && Array.isArray(layout.right)) {
+                // 设置面板宽度为340px - 直接访问当前view的容器元素
+                const width = 340;
+                
+                // 获取当前view的容器元素并设置宽度
+                const viewContainer = this.containerEl;
+                if (viewContainer) {
+                    // 获取父级容器，这应该是实际的面板元素
+                    const parentContainer = viewContainer.parentElement;
+                    if (parentContainer) {
+                        parentContainer.style.width = `${width}px`;
+                    }
+                }
+                
+                // 更新容器宽度记录，确保缩放比例正确
+                this.lastContainerWidth = width;
+                
+                // 触发一次缩放更新
+                this.updatePreviewScale();
+            }
+        });
+
         const currentFile = this.app.workspace.getActiveFile();
         await this.onFileOpen(currentFile);
     }
@@ -481,15 +509,16 @@ export class RedView extends ItemView {
     private async updatePreview() {
         if (!this.currentFile) return;
         
-        // 保存当前的缩放比例
-        const imagePreviews = this.previewEl.querySelectorAll('.red-image-preview');
-        let savedScale: number | null = null;
-        if (imagePreviews.length > 0) {
-            const transform = imagePreviews[0].getAttribute('style')?.match(/scale\(([0-9.]+)\)/);
-            if (transform) {
-                savedScale = parseFloat(transform[1]);
-            }
-        }
+        // 保存当前的缩放状态
+        const savedScales: {transform: string, transformOrigin: string}[] = [];
+        const currentPreviewElements = this.previewEl.querySelectorAll('.red-image-preview');
+        currentPreviewElements.forEach((el: Element) => {
+            const previewEl = el as HTMLElement;
+            savedScales.push({
+                transform: previewEl.style.transform,
+                transformOrigin: previewEl.style.transformOrigin
+            });
+        });
         
         this.previewEl.empty();
 
@@ -503,20 +532,22 @@ export class RedView extends ItemView {
         );
 
         // 确保 Markdown 内容完全渲染完成后再处理
-        requestAnimationFrame(() => {
-            RedConverter.formatContent(this.previewEl);
+        requestAnimationFrame(async () => {
+            
+            // 临时禁用ResizeObserver，避免恢复缩放值时被覆盖
+            this.resizeObserver?.disconnect();
+            
+            await RedConverter.formatContent(this.previewEl, this.currentFile?.path || '');
             const hasValidContent = RedConverter.hasValidContent(this.previewEl);
-
-
 
             if (hasValidContent) {
                 // 应用当前模板
-                // 创建包含当前文件名的settings
                 const settings = { ...this.settingsManager.getSettings() } as any;
                 if (this.currentFile) {
                     settings.currentFileName = this.currentFile.basename;
                 }
                 this.imgTemplateManager.applyTemplate(this.previewEl, settings);
+                
                 // 应用当前背景设置
                 const backgroundSettings = this.settingsManager.getSettings().backgroundSettings;
                 if (backgroundSettings.imageUrl) {
@@ -525,6 +556,19 @@ export class RedView extends ItemView {
                         this.backgroundManager.applyBackgroundStyles(previewContainer as HTMLElement, backgroundSettings);
                     }
                 }
+            }
+
+            // 恢复缩放值和transform-origin
+            if (savedScales.length > 0) {
+                const newPreviewElements = this.previewEl.querySelectorAll('.red-image-preview');
+                newPreviewElements.forEach((el: Element, index: number) => {
+                    if (index < savedScales.length) {
+                        const previewEl = el as HTMLElement;
+                        // 应用保存的缩放值，优先级高于默认值
+                        previewEl.style.transform = savedScales[index].transform;
+                        previewEl.style.transformOrigin = savedScales[index].transformOrigin;
+                    }
+                });
             }
 
             this.updateControlsState(hasValidContent);
@@ -557,13 +601,11 @@ export class RedView extends ItemView {
                 if (settings.fontSize) {
                     previewElement.style.fontSize = `${settings.fontSize}px`;
                 }
-                
-                // 恢复之前保存的缩放比例
-                if (savedScale !== null) {
-                    previewElement.style.transform = `scale(${savedScale})`;
-                    previewElement.style.transformOrigin = 'top center';
-                }
             });
+            
+            // 重新启用ResizeObserver，但不立即更新缩放，保持当前恢复的缩放值
+            this.lastContainerWidth = this.previewEl.clientWidth;
+            this.resizeObserver?.observe(this.previewEl);
         });
     }
 
