@@ -1,7 +1,7 @@
 import * as htmlToImage from 'html-to-image';
 import JSZip from 'jszip';
 import type { SettingsManager } from './settings/settings';
-import type { App, TFile } from 'obsidian';
+import type { App } from 'obsidian';
 
 export class DownloadManager {
     private settingsManager: SettingsManager;
@@ -27,13 +27,13 @@ export class DownloadManager {
         }
     }
     // 添加共用的导出配置方法
-    private getExportConfig(imageElement: HTMLElement) {
+    private getExportConfig(_imageElement: HTMLElement) {
         return {
             quality: 1,
             pixelRatio: 4,
             skipFonts: false,
             // 添加过滤器，确保所有元素都被包含
-            filter: (node: Node) => {
+            filter: (_node: Node) => {
                 return true;
             },
             // 处理图片加载错误
@@ -67,8 +67,10 @@ export class DownloadManager {
                     section.classList.remove(VISIBLE_CLASS);
                 });
 
-                sections[i].classList.remove(HIDDEN_CLASS);
-                sections[i].classList.add(VISIBLE_CLASS);
+                if (sections[i]) {
+                    sections[i]!.classList.remove(HIDDEN_CLASS);
+                    sections[i]!.classList.add(VISIBLE_CLASS);
+                }
 
                 // 确保浏览器完成重绘并等待资源加载
                 await new Promise(resolve => setTimeout(resolve, 300));
@@ -105,8 +107,10 @@ export class DownloadManager {
 
             // 恢复原始类名状态
             sections.forEach((section, index) => {
-                section.classList.toggle(VISIBLE_CLASS, originalVisibility[index].visible);
-                section.classList.toggle(HIDDEN_CLASS, originalVisibility[index].hidden);
+                if (originalVisibility[index]) {
+                    section.classList.toggle(VISIBLE_CLASS, originalVisibility[index]!.visible);
+                    section.classList.toggle(HIDDEN_CLASS, originalVisibility[index]!.hidden);
+                }
             });
 
             // 创建下载

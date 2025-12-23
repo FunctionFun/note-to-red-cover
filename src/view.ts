@@ -14,10 +14,10 @@ export class RedView extends ItemView {
     private previewEl: HTMLElement;
     private currentFile: TFile | null = null;
     private updateTimer: number | null = null;
-    private isPreviewLocked: boolean = false;
-    private currentImageIndex: number = 0;
+    private isPreviewLocked = false;
+    private currentImageIndex = 0;
     private backgroundManager: BackgroundManager;
-    private lastContainerWidth: number = 0;
+    private lastContainerWidth = 0;
 
 
     // UI 元素
@@ -46,8 +46,7 @@ export class RedView extends ItemView {
         this.settingsManager = settingsManager;
         this.backgroundManager = new BackgroundManager();
         this.imgTemplateManager = new ImgTemplateManager(
-            this.settingsManager,
-            this.updatePreview.bind(this)
+            this.settingsManager
         );
         this.downloadManager = new DownloadManager(this.settingsManager, this.app);
 
@@ -70,8 +69,10 @@ export class RedView extends ItemView {
     // #region 视图初始化
     async onOpen() {
         const container = this.containerEl.children[1];
-        container.empty();
-        container.className = 'red-view-content';
+        if (container) {
+            container.empty();
+            container.className = 'red-view-content';
+        }
 
         await this.initializeToolbar(container as HTMLElement);
         this.initializePreviewArea(container as HTMLElement);
@@ -83,7 +84,6 @@ export class RedView extends ItemView {
 
         // 设置右侧插件面板的默认宽度为340px
         this.app.workspace.onLayoutReady(() => {
-            const leaf = this.leaf;
             const layout = this.app.workspace.getLayout();
             
             // 检查是否为右侧面板的leaf
@@ -440,10 +440,9 @@ export class RedView extends ItemView {
             text: `使用指南：
                 1. 核心用法：内容将根据高度自动分割成小红书配图
                 2. 内容分页：在设置中启用后，使用 --- 可将内容分割为多页
-                3. 首图制作：单独调整首节字号至20-24px，使用【下载当前页】导出
-                4. 长文优化：内容较多的章节可调小字号至14-16px后单独导出
-                5. 批量操作：保持统一字号时，用【导出全部页】批量生成
-                6. 实时编辑：解锁状态(🔓)下编辑文档即时预览效果`
+                3. 长文优化：内容较多的章节可调小字号至14-16px后单独导出
+                4. 批量操作：保持统一字号时，用【导出全部页】批量生成
+                5. 实时编辑：解锁状态(🔓)下编辑文档即时预览效果`
         });
     }
 
@@ -634,8 +633,8 @@ export class RedView extends ItemView {
                     if (index < savedScales.length) {
                         const previewEl = el as HTMLElement;
                         // 应用保存的缩放值，优先级高于默认值
-                        previewEl.style.transform = savedScales[index].transform;
-                        previewEl.style.transformOrigin = savedScales[index].transformOrigin;
+                previewEl.style.transform = savedScales[index]!.transform;
+                previewEl.style.transformOrigin = savedScales[index]!.transformOrigin;
                     }
                 });
             }
@@ -782,8 +781,8 @@ export class RedView extends ItemView {
         });
 
         if (options.length > 0) {
-            selectedText.textContent = options[0].label;
-            select.dataset.value = options[0].value;
+            selectedText.textContent = options[0]!.label;
+            select.dataset.value = options[0]!.value;
             dropdown.querySelector('.red-select-item')?.classList.add('red-selected');
         }
 

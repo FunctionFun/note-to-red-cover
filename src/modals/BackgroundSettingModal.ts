@@ -8,8 +8,8 @@ export interface BackgroundSettings {
 }
 
 export class BackgroundSettingModal extends Modal {
-    private imageUrl: string = '';
-    private scale: number = 1;
+    private imageUrl = '';
+    private scale = 1;
     private position: { x: number; y: number } = { x: 0, y: 0 };
     private initialSettings?: BackgroundSettings;
     private previewImage: HTMLElement | null = null;
@@ -210,7 +210,7 @@ export class BackgroundSettingModal extends Modal {
         this.backgroundManager.applyBackgroundStyles(element, settings);
     }
 
-    private updateTargetPreview(applyBackground: boolean = true) {
+    private updateTargetPreview(applyBackground = true) {
         const previewContainer = this.targetPreviewEl.querySelector('.red-image-preview');
         if (!previewContainer) return;
 

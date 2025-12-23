@@ -1,12 +1,12 @@
 import * as htmlToImage from 'html-to-image';
 
 export class ClipboardManager {
-    private static getExportConfig(imageElement: HTMLElement) {
+    private static getExportConfig(_imageElement: HTMLElement) {
         return {
             quality: 1,
             pixelRatio: 4,
             skipFonts: false,
-            filter: (node: Node) => {
+            filter: (_node: Node) => {
                 return true;
             },
             imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='

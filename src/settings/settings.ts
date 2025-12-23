@@ -157,9 +157,12 @@ export class SettingsManager extends EventEmitter {
 
     async updateFont(oldValue: string, newFont: { value: string; label: string }) {
         const index = this.settings.customFonts.findIndex(f => f.value === oldValue);
-        if (index !== -1 && !this.settings.customFonts[index].isPreset) {
-            this.settings.customFonts[index] = { ...newFont, isPreset: false };
-            await this.saveSettings();
+        if (index !== -1 && this.settings.customFonts) {
+            const font = this.settings.customFonts[index];
+            if (font && !font.isPreset) {
+                this.settings.customFonts[index] = { ...newFont, isPreset: false };
+                await this.saveSettings();
+            }
         }
     }
 }

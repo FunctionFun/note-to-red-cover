@@ -1,9 +1,9 @@
-import { Plugin, Notice } from 'obsidian';
+import { Plugin, Notice, WorkspaceLeaf } from 'obsidian';
 import { RedView, VIEW_TYPE_RED } from './view';  // 暂时改回原来的导入
 
 import { SettingsManager } from './settings/settings';
 import { RedConverter } from './converter';  // 暂时使用原来的转换器
-import { DonateManager } from './donateManager';
+
 import { RedSettingTab } from './settings/SettingTab';
 
 export default class RedPlugin extends Plugin {
@@ -19,7 +19,7 @@ export default class RedPlugin extends Plugin {
         // 初始化转换器
         RedConverter.initialize(this.app, this);
 
-        DonateManager.initialize(this.app, this);
+
 
         // 注册视图
         this.registerView(
@@ -29,7 +29,7 @@ export default class RedPlugin extends Plugin {
 
         // 注册文件列表项渲染钩子，添加导出标识
         this.registerEvent(
-            this.app.workspace.on('file-menu', (menu, file) => {
+            this.app.workspace.on('file-menu', (_menu, _file) => {
                 // 这里可以添加右键菜单功能，但不是我们需要的导出标识
             })
         );
@@ -84,7 +84,7 @@ export default class RedPlugin extends Plugin {
     // 如果视图已经存在，激活它
         const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_RED);  // 使用原来的视图类型
     if (leaves.length > 0) {
-      this.app.workspace.revealLeaf(leaves[0]);
+      this.app.workspace.revealLeaf(leaves[0] as WorkspaceLeaf);
       return;
     }
 

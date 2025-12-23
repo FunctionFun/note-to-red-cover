@@ -17,15 +17,14 @@ export class ImgTemplateManager {
     private currentTemplate: ImgTemplate | null = null;
 
     constructor(
-        private settingsManager: SettingsManager,
-        private onSettingsUpdate: () => Promise<void>
+        private settingsManager: SettingsManager
     ) {
         this.initializeTemplates();
     }
 
     private initializeTemplates() {
         // 只注册默认模板
-        this.registerTemplate(new DefaultTemplate(this.settingsManager, this.onSettingsUpdate));
+        this.registerTemplate(new DefaultTemplate(this.settingsManager));
     }
 
     registerTemplate(template: ImgTemplate) {
@@ -48,7 +47,7 @@ export class ImgTemplateManager {
 
     applyTemplate(previewEl: HTMLElement, settings: any) {
         if (!this.currentTemplate) {
-            this.currentTemplate = this.templates[0];
+            this.currentTemplate = this.templates[0] || null;
         }
 
         if (this.currentTemplate) {

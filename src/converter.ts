@@ -49,7 +49,7 @@ export class RedConverter {
         return !!element.textContent && element.textContent.trim().length > 0;
     }
 
-    static async formatContent(element: HTMLElement, currentFilePath: string = ''): Promise<void> {
+    static async formatContent(element: HTMLElement, currentFilePath = ''): Promise<void> {
         // 获取所有内容
         // 直接使用element作为内容源，因为MarkdownRenderer直接渲染到该元素中
         
@@ -180,7 +180,7 @@ export class RedConverter {
         element.dispatchEvent(copyEvent);
     }
 
-    private static async createContentSection(markdownContent: Element, containerWidth: number = 450, currentFilePath: string = ''): Promise<HTMLElement | null> {
+    private static async createContentSection(markdownContent: Element, containerWidth = 450, currentFilePath = ''): Promise<HTMLElement | null> {
         const settings = this.plugin?.settingsManager?.getSettings();
         
         // 先克隆markdownContent，避免修改原始DOM
@@ -227,7 +227,7 @@ export class RedConverter {
         if (settings?.useHorizontalRuleSplit) {
             // 使用水平分割线分割内容
             hrPages = [];
-            let currentPage: Element[] = [];
+            const currentPage: Element[] = [];
             
             content.forEach((el: Element) => {
                 // 检查是否为水平分割线
@@ -461,7 +461,7 @@ export class RedConverter {
      */
     private static splitContentByHeight(content: Element[], maxHeight: number, tempSection: HTMLElement): Element[][] {
         const pages: Element[][] = [];
-        let currentPage: Element[] = [];
+        const currentPage: Element[] = [];
         
         // 1. 首先将内容分组
         const groups = this.groupElements(content);
@@ -474,6 +474,7 @@ export class RedConverter {
         // 2. 遍历所有分组
         for (let i = 0; i < groups.length; i++) {
             const group = groups[i];
+            if (!group) continue;
             
             // 3. 根据分组类型处理
             switch (group.type) {
@@ -562,6 +563,7 @@ export class RedConverter {
         
         for (let i = 0; i < content.length; i++) {
             const el = content[i];
+            if (!el) continue;
             
             // 检查元素是否有内容或包含图片
             const hasTextContent = (el.textContent?.trim() || '').length > 0;
@@ -601,51 +603,7 @@ export class RedConverter {
         return groups;
     }
     
-    /**
-     * 创建列表分组
-     * @param content 内容元素数组
-     * @param startIndex 起始索引
-     */
-    private static createListGroup(content: Element[], startIndex: number): ElementGroup | null {
-        let i = startIndex;
-        
-        // 检查起始元素是否为列表项
-        if (i >= content.length || content[i].tagName !== 'LI') {
-            return null;
-        }
-        
-        const firstEl = content[i];
-        const isOrderedList = firstEl.parentElement?.tagName === 'OL';
-        const startIndexValue = isOrderedList && firstEl.parentElement?.tagName === 'OL' 
-            ? parseInt(firstEl.parentElement.getAttribute('start') || '1') 
-            : 1;
-        
-        // 收集所有连续的列表项
-        const allListItems: Element[] = [];
-        while (i < content.length && content[i].tagName === 'LI') {
-            allListItems.push(content[i]);
-            i++;
-        }
-        
-        // 过滤掉空列表项（但保留包含图片的列表项）
-        const nonEmptyListItems = allListItems.filter(item => {
-            const hasTextContent = (item.textContent?.trim() || '').length > 0;
-            const hasImage = item.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
-            return hasTextContent || hasImage;
-        });
-        
-        // 如果没有非空列表项，返回null
-        if (nonEmptyListItems.length === 0) {
-            return null;
-        }
-        
-        return {
-            type: ElementGroupType.ListGroup,
-            elements: nonEmptyListItems,
-            isOrderedList,
-            startIndex: startIndexValue
-        };
-    }
+
     
     /**
      * 处理单个元素分组
@@ -671,29 +629,28 @@ export class RedConverter {
         const codeBlock = group.elements[0];
         
         // 如果不是PRE元素，使用通用处理
-        if (codeBlock.tagName !== 'PRE') {
+        if (codeBlock!.tagName !== 'PRE') {
             this.processGenericGroup(group, currentPage, pages, maxHeight, tempSection);
             return;
         }
         
         // 获取代码内容和语法高亮类
-        const codeContent = codeBlock.textContent || '';
+        const codeContent = codeBlock!.textContent || '';
         
         // 检查代码块是否有实际内容
         if (!codeContent.trim()) {
             return; // 跳过空代码块
         }
         
-        const codeElement = codeBlock.querySelector('code');
+        const codeElement = codeBlock!.querySelector('code');
         const langClass = codeElement?.className || '';
-        const langName = langClass.replace('language-', '');
         
         // 按行分割代码并过滤空行
         const codeLines = codeContent.split('\n').filter(line => line.trim().length > 0);
         
         // 如果代码只有一行或空行，直接处理
         if (codeLines.length <= 1) {
-            const clonedBlock = codeBlock.cloneNode(true) as Element;
+            const clonedBlock = codeBlock!.cloneNode(true) as Element;
             if (clonedBlock.tagName === 'PRE') {
                 clonedBlock.classList.add('red-pre');
             }
@@ -706,7 +663,7 @@ export class RedConverter {
             tempSection.style.overflow = 'visible';
             
             if (tempSection.scrollHeight <= maxHeight) {
-                currentPage.push(codeBlock);
+                currentPage.push(codeBlock!);
             } else {
                 if (currentPage.length > 0) {
                     // 检查当前页面是否有内容
@@ -717,7 +674,7 @@ export class RedConverter {
                     currentPage.length = 0;
                     tempSection.innerHTML = '';
                 }
-                currentPage.push(codeBlock);
+                currentPage.push(codeBlock!);
             }
             return;
         }
@@ -731,7 +688,7 @@ export class RedConverter {
             
             // 创建临时代码块
             const tempPre = document.createElement('pre');
-            tempPre.className = `red-pre ${codeBlock.className}`;
+            tempPre.className = `red-pre ${codeBlock!.className}`;
             const tempCode = document.createElement('code');
             tempCode.className = langClass;
             tempCode.textContent = testLines.join('\n');
@@ -747,13 +704,13 @@ export class RedConverter {
             
             if (tempSection.scrollHeight <= maxHeight) {
                 // 可以添加到当前代码页
-                currentCodePage.push(line);
+                currentCodePage.push(line!);
             } else {
                 // 需要分页
                 if (currentCodePage.length > 0) {
                     // 创建当前页面的代码块
                     const pagePre = document.createElement('pre');
-                    pagePre.className = `red-pre ${codeBlock.className}`;
+                    pagePre.className = `red-pre ${codeBlock!.className}`;
                     const pageCode = document.createElement('code');
                     pageCode.className = langClass;
                     pageCode.textContent = currentCodePage.join('\n');
@@ -782,14 +739,14 @@ export class RedConverter {
                     }
                     
                     // 重置当前代码页，从当前行开始新页面
-                    currentCodePage = [line];
+                    currentCodePage = [line!];
                 } else {
                     // 单行代码就超过了最大高度，单独占一页
                     const singleLinePre = document.createElement('pre');
-                    singleLinePre.className = `red-pre ${codeBlock.className}`;
+                    singleLinePre.className = `red-pre ${codeBlock!.className}`;
                     const singleLineCode = document.createElement('code');
                     singleLineCode.className = langClass;
-                    singleLineCode.textContent = line;
+                    singleLineCode.textContent = line!;
                     singleLinePre.appendChild(singleLineCode);
                     
                     // 检查当前页面是否有空间
@@ -805,13 +762,13 @@ export class RedConverter {
                         currentPage.push(singleLinePre);
                     } else {
                         // 当前页面已满，保存并创建新页面
-                    if (currentPage.length > 0) {
-                        const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                        if (pageHasContent) {
-                            pages.push([...currentPage]);
+                        if (currentPage.length > 0) {
+                            const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
+                            if (pageHasContent) {
+                                pages.push([...currentPage]);
+                            }
+                            currentPage.length = 0;
                         }
-                        currentPage.length = 0;
-                    }
                         currentPage.push(singleLinePre);
                     }
                 }
@@ -823,7 +780,7 @@ export class RedConverter {
         if (nonEmptyCodePage.length > 0) {
             // 创建剩余代码的代码块
             const pagePre = document.createElement('pre');
-            pagePre.className = `red-pre ${codeBlock.className}`;
+            pagePre.className = `red-pre ${codeBlock!.className}`;
             const pageCode = document.createElement('code');
             pageCode.className = langClass;
             pageCode.textContent = nonEmptyCodePage.join('\n');
@@ -864,6 +821,8 @@ export class RedConverter {
     private static processListGroup(group: ElementGroup, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
         // 获取完整列表元素
         const listElement = group.elements[0];
+        if (!listElement) return;
+        
         const isOrderedList = group.isOrderedList || listElement.tagName === 'OL';
         const startIndex = group.startIndex || parseInt(listElement.getAttribute('start') || '1');
         
@@ -895,7 +854,7 @@ export class RedConverter {
             const listItem = nonEmptyListItems[i];
             
             // 克隆列表项以保留原始样式
-            const clonedItem = listItem.cloneNode(true) as HTMLElement;
+            const clonedItem = listItem!.cloneNode(true) as HTMLElement;
             
             // 创建临时列表容器，用于测量高度
             const tempList = document.createElement(isOrderedList ? 'ol' : 'ul');
@@ -926,7 +885,7 @@ export class RedConverter {
             // 检查是否超出最大高度
             if (tempSection.scrollHeight <= maxHeight) {
                 // 列表项可以放入当前页面，添加到当前列表页
-                currentListItemPage.push(listItem);
+                currentListItemPage.push(listItem!);
             } else {
                 // 当前列表项导致页面溢出
                 if (currentListItemPage.length > 0) {
@@ -964,7 +923,7 @@ export class RedConverter {
                     }
                     
                     // 处理长列表项
-                    this.handleLongListItem(listItem, isOrderedList, currentStartIndex, currentPage, pages, maxHeight, tempSection);
+                    this.handleLongListItem(listItem!, isOrderedList, currentStartIndex, currentPage, pages, maxHeight, tempSection);
                     currentStartIndex++;
                 }
             }
@@ -1051,8 +1010,8 @@ export class RedConverter {
         // 1. 尝试按段落拆分（使用换行符分隔）
         const paragraphs = listContent.split(/\n\s*\n/);
         
-        let currentParagraphPage: string[] = [];
-        let remainingParagraphs: string[] = [...paragraphs];
+        const currentParagraphPage: string[] = [];
+        const remainingParagraphs: string[] = [...paragraphs];
         
         // 尝试找到最大可放入当前页面的段落数
         while (remainingParagraphs.length > 0) {
@@ -1120,8 +1079,8 @@ export class RedConverter {
             const singleParagraph = listContent;
             const words = singleParagraph.split(' ');
             
-            let currentWordPage: string[] = [];
-            let remainingWords: string[] = [...words];
+            const currentWordPage: string[] = [];
+            const remainingWords: string[] = [...words];
             
             // 尝试找到最大可放入当前页面的单词数
             while (remainingWords.length > 0) {
@@ -1603,7 +1562,7 @@ export class RedConverter {
                 console.log('Processing linktext:', linktext);
                 
                 // 获取图片文件
-                const file = this.app.metadataCache.getFirstLinkpathDest(linktext, currentFilePath);
+                const file = this.app.metadataCache.getFirstLinkpathDest(linktext!, currentFilePath);
                 
                 console.log('Found file:', file);
                 
@@ -1686,7 +1645,7 @@ export class RedConverter {
                     
                     // 尝试直接使用linktext作为路径（如果是相对路径）
                     try {
-                        const absolutePath = this.app.vault.adapter.getResourcePath(linktext);
+                        const absolutePath = this.app.vault.adapter.getResourcePath(linktext!);
                         console.log('尝试直接生成绝对路径:', absolutePath);
                         
                         // 创建img元素
