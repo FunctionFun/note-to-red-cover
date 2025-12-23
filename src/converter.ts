@@ -1,7 +1,6 @@
 import { App } from 'obsidian';
 import RedPlugin from './main';
 import Prism from 'prismjs';
-import 'prismjs/themes/prism-tomorrow.css';
 // 导入常用语言支持
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-typescript';

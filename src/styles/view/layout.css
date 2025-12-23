@@ -99,7 +99,7 @@
 /* 页码指示器 */
 .red-page-indicator {
     padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--background-primary);
     border-radius: 16px;
     font-size: 14px;
     color: #333;
@@ -121,6 +121,7 @@
     left: 0;
     background: var(--code-background);
     width: 100%;
+    opacity: 0.65;
 }
 
 /* 页码样式 */

@@ -1,12 +1,12 @@
 import { ItemView, WorkspaceLeaf, MarkdownRenderer, TFile, Notice, setIcon } from 'obsidian';
 import { RedConverter } from './converter';
 import { DownloadManager } from './downloadManager';
+import { BackgroundManager } from './backgroundManager';
+import { BackgroundSettingModal } from './modals/BackgroundSettingModal';
 
 import type { SettingsManager } from './settings/settings';
 import { ClipboardManager } from './clipboardManager';
 import { ImgTemplateManager } from './imgTemplateManager';
-import { BackgroundSettingModal } from './modals/BackgroundSettingModal';
-import { BackgroundManager } from './backgroundManager';
 export const VIEW_TYPE_RED = 'note-to-red';
 
 export class RedView extends ItemView {
@@ -16,7 +16,6 @@ export class RedView extends ItemView {
     private updateTimer: number | null = null;
     private isPreviewLocked = false;
     private currentImageIndex = 0;
-    private backgroundManager: BackgroundManager;
     private lastContainerWidth = 0;
 
 
@@ -35,6 +34,7 @@ export class RedView extends ItemView {
     private settingsManager: SettingsManager;
     private imgTemplateManager: ImgTemplateManager;
     private downloadManager: DownloadManager;
+    private backgroundManager: BackgroundManager;
     // #endregion
 
     // #region 基础视图方法
@@ -44,13 +44,11 @@ export class RedView extends ItemView {
     ) {
         super(leaf);
         this.settingsManager = settingsManager;
-        this.backgroundManager = new BackgroundManager();
         this.imgTemplateManager = new ImgTemplateManager(
             this.settingsManager
         );
         this.downloadManager = new DownloadManager(this.settingsManager, this.app);
-
-
+        this.backgroundManager = new BackgroundManager();
     }
 
     getViewType() {
@@ -123,32 +121,7 @@ export class RedView extends ItemView {
         await this.restoreSettings();
     }
 
-    // 添加背景设置按钮初始化方法
-    private async initializeBackgroundButton(parent: HTMLElement) {
-        const bgButton = parent.createEl('button', {
-            cls: 'red-background-button',
-            attr: { 'aria-label': '设置背景图片' }
-        });
-        setIcon(bgButton, 'image');
 
-        bgButton.addEventListener('click', () => {
-            const currentSettings = this.settingsManager.getSettings().backgroundSettings;
-            new BackgroundSettingModal(
-                this.app,
-                async (backgroundSettings) => {
-                    await this.settingsManager.updateSettings({ backgroundSettings });
-                    const imagePreview = this.previewEl.querySelector('.red-image-preview') as HTMLElement;
-                    this.backgroundManager.applyBackgroundStyles(
-                        imagePreview,
-                        backgroundSettings
-                    );
-                },
-                this.previewEl,
-                this.backgroundManager,
-                currentSettings
-            ).open();
-        });
-    }
 
     private initializePreviewArea(container: HTMLElement) {
         const wrapper = container.createEl('div', { cls: 'red-preview-wrapper' });
@@ -505,6 +478,32 @@ export class RedView extends ItemView {
             });
     }
 
+    private async initializeBackgroundButton(parent: HTMLElement) {
+        const bgButton = parent.createEl('button', {
+            cls: 'red-background-button',
+            attr: { 'aria-label': '设置背景图片' }
+        });
+        setIcon(bgButton, 'image');
+
+        bgButton.addEventListener('click', () => {
+            const currentSettings = this.settingsManager.getSettings().backgroundSettings;
+            new BackgroundSettingModal(
+                this.app,
+                async (backgroundSettings) => {
+                    await this.settingsManager.updateSettings({ backgroundSettings });
+                    const imagePreview = this.previewEl.querySelector('.red-image-preview') as HTMLElement;
+                    this.backgroundManager.applyBackgroundStyles(
+                        imagePreview,
+                        backgroundSettings
+                    );
+                },
+                this.previewEl,
+                this.backgroundManager,
+                currentSettings
+            ).open();
+        });
+    }
+
     private initializeCopyButtonListener() {
         const copyButtonHandler = async (e: CustomEvent) => {
             const { copyButton } = e.detail;
@@ -616,14 +615,7 @@ export class RedView extends ItemView {
                 }
                 this.imgTemplateManager.applyTemplate(this.previewEl, settings);
                 
-                // 应用当前背景设置
-                const backgroundSettings = this.settingsManager.getSettings().backgroundSettings;
-                if (backgroundSettings.imageUrl) {
-                    const previewContainer = this.previewEl.querySelector('.red-image-preview');
-                    if (previewContainer) {
-                        this.backgroundManager.applyBackgroundStyles(previewContainer as HTMLElement, backgroundSettings);
-                    }
-                }
+
             }
 
             // 恢复缩放值和transform-origin
@@ -649,6 +641,7 @@ export class RedView extends ItemView {
             
             // 计算并设置内容区域的高度：父级容器高度 - 页脚高度
             const imagePreviews = this.previewEl.querySelectorAll('.red-image-preview');
+            const settings = this.settingsManager.getSettings();
             imagePreviews.forEach((imagePreview: Element) => {
                 const previewElement = imagePreview as HTMLElement;
                 const contentArea = previewElement.querySelector('.red-preview-content') as HTMLElement;
@@ -665,9 +658,13 @@ export class RedView extends ItemView {
                 }
                 
                 // 应用字体大小设置到.red-image-preview元素
-                const settings = this.settingsManager.getSettings();
                 if (settings.fontSize) {
                     previewElement.style.fontSize = `${settings.fontSize}px`;
+                }
+                
+                // 应用背景样式
+                if (settings.backgroundSettings && settings.backgroundSettings.imageUrl) {
+                    this.backgroundManager.applyBackgroundStyles(previewElement, settings.backgroundSettings);
                 }
             });
             

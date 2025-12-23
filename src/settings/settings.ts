@@ -7,9 +7,7 @@ interface RedSettings {
     templateId: string;
     fontFamily: string;
     fontSize: number;
-    backgroundId: string;
     // 添加用户信息设置
-    userAvatar: string;
     userName: string;
     notesTitle: string;
     userId: string;
@@ -18,11 +16,6 @@ interface RedSettings {
     footerRightText: string;
     useHorizontalRuleSplit: boolean; // 基于分割线分割内容的开关
     customFonts: { value: string; label: string; isPreset?: boolean }[];  // 添加自定义字体配置
-    backgroundSettings: {
-        imageUrl: string;
-        scale: number;
-        position: { x: number; y: number };
-    };
     // 水印配置
     watermarkSettings: {
         enabled: boolean;
@@ -31,6 +24,13 @@ interface RedSettings {
         opacity: number; // 0.1 - 1
         count: number; // 1 - 5
         watermarkColor: string; // 十六进制颜色值
+    };
+    // 背景配置
+    backgroundId: string;
+    backgroundSettings: {
+        imageUrl: string;
+        scale: number;
+        position: { x: number; y: number };
     };
     // 导出标识
     exportedNotes: string[];
@@ -44,9 +44,7 @@ export const DEFAULT_SETTINGS: RedSettings = {
     templateId: 'default',
     fontFamily: 'Optima-Regular, Optima, PingFangSC-light, PingFangTC-light, "PingFang SC"',
     fontSize: 16,
-    backgroundId: '',
     // 修改默认用户信息
-    userAvatar: '',  // 默认为空，提示用户上传
     userName: '',
     notesTitle: '',
     userId: '',
@@ -85,11 +83,6 @@ export const DEFAULT_SETTINGS: RedSettings = {
             isPreset: true
         }
     ],
-    backgroundSettings: {
-        imageUrl: '',
-        scale: 1,
-        position: { x: 0, y: 0 }
-    },
     // 水印默认设置
     watermarkSettings: {
         enabled: true,
@@ -99,6 +92,9 @@ export const DEFAULT_SETTINGS: RedSettings = {
         count: 2,
         watermarkColor: '#ebebeb'
     },
+    // 背景配置默认设置
+    backgroundId: '',
+    backgroundSettings: { imageUrl: '', scale: 1, position: { x: 0, y: 0 } },
     // 导出标识默认设置
     exportedNotes: []
 }

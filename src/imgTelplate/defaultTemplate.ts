@@ -84,7 +84,7 @@ export class DefaultTemplate implements ImgTemplate {
         footerArea.empty();
         const settings = this.settingsManager.getSettings();
 
-        // 左边显示头像/作者名/作者账号
+        // 左边显示作者名/作者账号
         const leftSection = footerArea.createEl('div', { cls: 'red-footer-left' });
         this.createFooterLeftSection(leftSection, settings);
         
@@ -98,21 +98,6 @@ export class DefaultTemplate implements ImgTemplate {
     }
 
     private createFooterLeftSection(parent: HTMLElement, settings: any): void {
-        // 添加头像
-        if (settings.userAvatar) {
-            const avatar = parent.createEl('img', {
-                cls: 'red-footer-avatar',
-                attr: {
-                    src: settings.userAvatar,
-                    alt: '作者头像'
-                }
-            });
-            avatar.style.width = '20px';
-            avatar.style.height = '20px';
-            avatar.style.borderRadius = '50%';
-            avatar.style.marginRight = '8px';
-        }
-
         // 添加作者名和作者账号
         const authorInfo = parent.createEl('div', { cls: 'red-footer-author-info' });
         

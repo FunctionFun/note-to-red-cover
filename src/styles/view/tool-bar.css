@@ -25,7 +25,7 @@
     width: 100%;
     padding: 10px 10px 40px 10px;
     border-top: 2px solid var(--background-modifier-border);
-    background-color: #ffffff;
+    background-color: var(--background-primary);
 }
 
 /* 控件组布局 */
