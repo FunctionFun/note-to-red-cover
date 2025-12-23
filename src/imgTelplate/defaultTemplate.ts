@@ -237,7 +237,7 @@ export class DefaultTemplate implements ImgTemplate {
         const handleBlur = async () => {
             const newName = input.value.trim();
             await this.settingsManager.updateSettings({
-                userName: newName || '夜半'
+                userName: newName || ''
             });
             await this.onSettingsUpdate();
             input.replaceWith(element);
@@ -287,8 +287,8 @@ export class DefaultTemplate implements ImgTemplate {
         const handleBlur = async () => {
             const newText = input.value.trim();
             const settings = position === 'left' 
-                ? { footerLeftText: newText || '夜半过后，光明便启程' }
-                : { footerRightText: newText || '欢迎关注公众号：夜半' };
+                ? { footerLeftText: newText || '' }
+                : { footerRightText: newText || '' };
             
             await this.settingsManager.updateSettings(settings);
             await this.onSettingsUpdate();

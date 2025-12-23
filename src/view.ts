@@ -198,6 +198,75 @@ export class RedView extends ItemView {
         this.imgTemplateManager.applyTemplate(this.previewEl, settings);
     }
 
+    // 在预览图片上添加水印
+    private async addPreviewWatermark() {
+        const watermarkSettings = this.settingsManager.getSettings().watermarkSettings;
+        if (!watermarkSettings.enabled) {
+            // 如果水印未启用，移除所有现有的预览水印
+            this.previewEl.querySelectorAll('.red-preview-watermark').forEach(watermark => {
+                watermark.remove();
+            });
+            return;
+        }
+
+        const imagePreviews = this.previewEl.querySelectorAll('.red-image-preview');
+        imagePreviews.forEach((imagePreview: Element) => {
+            const previewElement = imagePreview as HTMLElement;
+            
+            // 移除现有的水印
+            previewElement.querySelectorAll('.red-preview-watermark').forEach(watermark => {
+                watermark.remove();
+            });
+
+            const { width, height } = previewElement.getBoundingClientRect();
+            const { watermarkText, watermarkImage, opacity, count } = watermarkSettings;
+
+            // 生成指定数量的水印
+            for (let i = 0; i < count; i++) {
+                // 随机位置
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                
+                // 随机旋转角度 (-30 到 30 度)
+                const rotation = (Math.random() * 60 - 30);
+
+                let watermarkElement: HTMLElement;
+
+                if (watermarkImage) {
+                    // 创建图片水印
+                    const imgElement = document.createElement('img');
+                    imgElement.src = watermarkImage;
+                    imgElement.style.width = '100px';
+                    imgElement.style.height = 'auto';
+                    watermarkElement = imgElement;
+                } else if (watermarkText) {
+                    // 创建文字水印
+                const divElement = document.createElement('div');
+                divElement.textContent = watermarkText;
+                divElement.style.font = '24px Arial';
+                divElement.style.color = watermarkSettings.watermarkColor;
+                divElement.style.whiteSpace = 'nowrap';
+                watermarkElement = divElement;
+                } else {
+                    continue;
+                }
+
+                // 设置水印样式
+                watermarkElement.classList.add('red-preview-watermark');
+                watermarkElement.style.position = 'absolute';
+                watermarkElement.style.left = `${x}px`;
+                watermarkElement.style.top = `${y}px`;
+                watermarkElement.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+                watermarkElement.style.opacity = `${opacity}`;
+                watermarkElement.style.pointerEvents = 'none'; // 确保水印不影响用户交互
+                watermarkElement.style.zIndex = '1000'; // 确保水印显示在最上层
+
+                // 添加水印到预览元素
+                previewElement.appendChild(watermarkElement);
+            }
+        });
+    }
+
     private navigateImages(direction: 'prev' | 'next') {
         const sections = this.previewEl.querySelectorAll('.red-content-section');
         if (direction === 'prev' && this.currentImageIndex > 0) {
@@ -602,6 +671,9 @@ export class RedView extends ItemView {
                     previewElement.style.fontSize = `${settings.fontSize}px`;
                 }
             });
+            
+            // 添加预览水印
+            await this.addPreviewWatermark();
             
             // 重新启用ResizeObserver，但不立即更新缩放，保持当前恢复的缩放值
             this.lastContainerWidth = this.previewEl.clientWidth;

@@ -29,7 +29,8 @@ interface RedSettings {
         watermarkText: string;
         watermarkImage: string;
         opacity: number; // 0.1 - 1
-        count: number; // 2 - 3
+        count: number; // 1 - 5
+        watermarkColor: string; // 十六进制颜色值
     };
     // 导出标识
     exportedNotes: string[];
@@ -46,9 +47,10 @@ export const DEFAULT_SETTINGS: RedSettings = {
     backgroundId: '',
     // 修改默认用户信息
     userAvatar: '',  // 默认为空，提示用户上传
-    userName: '夜半',
-    notesTitle: '备忘录',
-    userId: '@Yeban',
+    userName: '',
+    notesTitle: '',
+    userId: '',
+
     useHorizontalRuleSplit: true, // 默认使用分割线分割内容
     footerLeftText: '作者名称',
     footerRightText: '作者账号 个人简介',
@@ -93,8 +95,9 @@ export const DEFAULT_SETTINGS: RedSettings = {
         enabled: true,
         watermarkText: '小红书笔记',
         watermarkImage: '',
-        opacity: 0.5,
-        count: 2
+        opacity: 0.2,
+        count: 2,
+        watermarkColor: '#ebebeb'
     },
     // 导出标识默认设置
     exportedNotes: []

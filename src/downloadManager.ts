@@ -189,7 +189,7 @@ export class DownloadManager {
             } else if (watermarkText) {
                 // 使用文字水印
                 ctx.font = '24px Arial';
-                ctx.fillStyle = '#000000';
+                ctx.fillStyle = watermarkSettings.watermarkColor;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(watermarkText, 0, 0);

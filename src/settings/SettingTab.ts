@@ -375,9 +375,9 @@ export class RedSettingTab extends PluginSettingTab {
         // 水印数量
         new Setting(containerEl)
             .setName('水印数量')
-            .setDesc('设置水印的显示数量（2-3）')
+            .setDesc('设置水印的显示数量（1-5）')
             .addSlider(slider => slider
-                .setLimits(2, 3, 1)
+                .setLimits(1, 5, 1)
                 .setValue(watermarkSettings.count)
                 .setDynamicTooltip()
                 .onChange(async (value: number) => {
@@ -388,6 +388,41 @@ export class RedSettingTab extends PluginSettingTab {
                         }
                     });
                     new Notice('设置已保存，请点击刷新按钮或重新加载插件使更改生效');
+                })
+            );
+
+        // 水印颜色
+        new Setting(containerEl)
+            .setName('水印颜色')
+            .setDesc('设置水印的颜色（十六进制格式，如#333333）')
+            .addText(text => text
+                .setValue(watermarkSettings.watermarkColor)
+                .setPlaceholder('#333333')
+                .onChange((value: string) => {
+                    // 验证十六进制颜色格式
+                    const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+                    if (hexColorRegex.test(value)) {
+                        this.debounce('watermarkColor', async () => {
+                            await this.plugin.settingsManager.updateSettings({
+                                watermarkSettings: {
+                                    ...watermarkSettings,
+                                    watermarkColor: value
+                                }
+                            });
+                            new Notice('设置已保存，请点击刷新按钮或重新加载插件使更改生效');
+                        });
+                    } else if (value === '') {
+                        // 允许空值，将使用默认颜色
+                        this.debounce('watermarkColor', async () => {
+                            await this.plugin.settingsManager.updateSettings({
+                                watermarkSettings: {
+                                    ...watermarkSettings,
+                                    watermarkColor: '#333333'
+                                }
+                            });
+                            new Notice('设置已保存，请点击刷新按钮或重新加载插件使更改生效');
+                        });
+                    }
                 })
             );
     }
