@@ -2,14 +2,17 @@ import * as htmlToImage from 'html-to-image';
 import JSZip from 'jszip';
 import type { SettingsManager } from './settings/settings';
 import type { App } from 'obsidian';
+import { WatermarkManager } from './watermarkManager';
 
 export class DownloadManager {
     private settingsManager: SettingsManager;
     private app: App;
+    private watermarkManager: WatermarkManager;
 
     constructor(settingsManager: SettingsManager, app: App) {
         this.settingsManager = settingsManager;
         this.app = app;
+        this.watermarkManager = new WatermarkManager();
     }
 
     // 获取当前活动笔记的ID
@@ -28,11 +31,18 @@ export class DownloadManager {
     }
     // 添加共用的导出配置方法
     private getExportConfig(_imageElement: HTMLElement) {
+        // 使用小红书封面标准尺寸：400x600
+        const width = 400;
+        const height = 600;
+        console.log("导出图片尺寸：", width, "x", height);
+        
         return {
             quality: 1,
-            pixelRatio: 4,
+            pixelRatio: 1, // 保持1:1的比例
+            width: width,
+            height: height,
             skipFonts: false,
-            // 添加过滤器，确保所有元素都被包含
+            // 移除严格的过滤器，确保所有子元素都被包含
             filter: (_node: Node) => {
                 return true;
             },
@@ -44,7 +54,11 @@ export class DownloadManager {
     async downloadAllImages(element: HTMLElement): Promise<void> {
         try {
             const zip = new JSZip();
-            const previewContainer = element.querySelector('.red-preview-container');
+            console.log('开始批量导出图片...');
+            
+            // 使用增强的元素查找找到预览容器
+            const targetElement = await this.findTargetElement(element);
+            const previewContainer = targetElement.parentElement;
             if (!previewContainer) throw new Error('找不到预览容器');
 
             // 定义 CSS 类名常量
@@ -73,36 +87,58 @@ export class DownloadManager {
                 }
 
                 // 确保浏览器完成重绘并等待资源加载
-                await new Promise(resolve => setTimeout(resolve, 300));
+                    await new Promise(resolve => setTimeout(resolve, 500)); // 增加等待时间确保渲染完成
 
-                const imageElement = element.querySelector<HTMLElement>('.red-image-preview')!;
+                    console.log(`批量导出 - 处理第${i + 1}页...`);
+                    // 重新查找目标元素，确保获取最新的DOM状态
+                    const imageElement = await this.findTargetElement(element);
+                    console.log('批量导出 - 找到的元素：', imageElement);
 
                 try {
-                    // 使用canvas方法以便添加水印
-                    const canvas = await htmlToImage.toCanvas(imageElement, this.getExportConfig(imageElement));
-                    
-                    // 添加水印
-                    const watermarkedCanvas = await this.addWatermark(canvas);
-                    
-                    // 转换为blob
-                    const blob = await new Promise<Blob>((resolve, reject) => {
-                        watermarkedCanvas.toBlob((b) => {
-                            if (b) {
-                                resolve(b);
-                            } else {
-                                reject(new Error('Canvas 转换为 Blob 失败'));
-                            }
-                        }, 'image/png', 1);
-                    });
-                    
-                    if (blob instanceof Blob) {
-                        zip.file(`小红书笔记_第${i + 1}页.png`, blob);
-                    } else {
-                        throw new Error('生成的不是有效的 Blob 对象');
+                    // 临时移除可能导致额外边距的样式
+                    const originalStyles = {
+                        padding: imageElement.style.padding,
+                        paddingBottom: imageElement.style.paddingBottom,
+                        boxShadow: imageElement.style.boxShadow,
+                        margin: imageElement.style.margin
+                    };
+
+                    // 移除内边距、外边距和阴影，确保只导出内容
+                    imageElement.style.padding = '0px';
+                    imageElement.style.paddingBottom = '0px';
+                    imageElement.style.boxShadow = 'none';
+                    imageElement.style.margin = '0px';
+
+                    try {
+                        // 使用canvas方法以便添加水印
+                        const canvas = await htmlToImage.toCanvas(imageElement, this.getExportConfig(imageElement));
+                        
+                        // 添加水印
+                        const watermarkedCanvas = await this.addWatermark(canvas);
+                        
+                        // 转换为blob
+                        const blob = await new Promise<Blob>((resolve, reject) => {
+                            watermarkedCanvas.toBlob((b) => {
+                                if (b) {
+                                    resolve(b);
+                                } else {
+                                    reject(new Error('Canvas 转换为 Blob 失败'));
+                                }
+                            }, 'image/png', 1);
+                        });
+                        
+                        if (blob instanceof Blob) {
+                            zip.file(`小红书笔记_第${i + 1}页.png`, blob);
+                        } else {
+                            throw new Error('生成的不是有效的 Blob 对象');
+                        }
+                    } finally {
+                        // 恢复原始样式
+                        Object.assign(imageElement.style, originalStyles);
                     }
-                } catch (err) {
-                    console.error(`第${i + 1}页导出失败`, err);
-                }
+                    } catch (err) {
+                        console.error(`第${i + 1}页导出失败`, err);
+                    }
             }
 
             // 恢复原始类名状态
@@ -159,23 +195,32 @@ export class DownloadManager {
         }
 
         const { width, height } = canvas;
-        const { watermarkText, watermarkImage, opacity, count } = watermarkSettings;
+        const { watermarkText, watermarkImage, opacity } = watermarkSettings;
+
+        // 获取统一的随机种子，确保与预览的一致性
+        const seed = this.watermarkManager.getWatermarkSeed();
+        
+        // 使用WatermarkManager生成水印位置
+        const positions = this.watermarkManager.generateWatermarkPositions({
+            containerWidth: width,
+            containerHeight: height,
+            settings: watermarkSettings,
+            seed: seed
+        });
 
         // 设置透明度
         ctx.globalAlpha = opacity;
 
-        // 生成随机位置的水印
-        for (let i = 0; i < count; i++) {
-            // 随机位置
-            const x = Math.random() * width;
-            const y = Math.random() * height;
+        // 根据生成的位置绘制水印
+        for (const position of positions) {
+            const { x, y, rotation } = position;
             
-            // 随机旋转角度 (-30 到 30 度)
-            const rotation = (Math.random() * 60 - 30) * Math.PI / 180;
+            // 转换角度为弧度
+            const rotationRad = rotation * Math.PI / 180;
 
             ctx.save();
             ctx.translate(x, y);
-            ctx.rotate(rotation);
+            ctx.rotate(rotationRad);
 
             if (watermarkImage) {
                 // 使用图片水印
@@ -208,43 +253,120 @@ export class DownloadManager {
         return canvas;
     }
 
+    // 增强的元素查找函数
+    private async findTargetElement(element: HTMLElement): Promise<HTMLElement> {
+        const maxAttempts = 10;
+        const delay = 200;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            console.log(`尝试查找目标元素 (第${attempt}次)...`);
+            // console.log('当前元素结构:', element.innerHTML);
+            console.log('元素类名:', element.className);
+            
+            // 首先尝试在直接传入的元素中查找
+            let target = element.querySelector('.red-image-preview');
+            console.log('直接查找结果:', target);
+            
+            // 如果没找到，尝试查找子元素
+            if (!target) {
+                console.log('尝试查找所有子元素:');
+                Array.from(element.children).forEach((child, index) => {
+                    console.log(`子元素 ${index}: ${child.outerHTML}`);
+                });
+                
+                // 尝试在所有包含red类名的元素中查找
+                const redElements = Array.from(element.querySelectorAll('[class*="red"]'));
+                console.log(`找到 ${redElements.length} 个包含red的元素:`);
+                redElements.forEach(el => {
+                    console.log(`  - ${el.className}: ${el.tagName}`);
+                });
+                
+                // 尝试查找预览容器
+                const previewContainer = element.querySelector('.red-preview-container');
+                console.log('预览容器:', previewContainer);
+                
+                if (previewContainer) {
+                    target = previewContainer.querySelector('.red-image-preview');
+                    console.log('从预览容器查找结果:', target);
+                }
+            }
+            
+            if (target) {
+                console.log('成功找到目标元素:', target);
+                return target as HTMLElement;
+            }
+            
+            // 如果没找到，等待后重试
+            console.log(`第${attempt}次尝试未找到元素，等待${delay}ms后重试...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        
+        // 最后尝试在整个文档中查找
+        const docTarget = document.querySelector('.red-image-preview');
+        if (docTarget) {
+            console.log('在整个文档中找到目标元素:', docTarget);
+            return docTarget as HTMLElement;
+        }
+        
+        throw new Error('找不到.red-image-preview元素');
+    }
+
     async downloadSingleImage(element: HTMLElement): Promise<void> {
         try {
-            const imageElement = element.querySelector('.red-image-preview') as HTMLElement;
-            if (!imageElement) {
-                throw new Error('找不到预览区域');
-            }
+            console.log('开始导出单张图片...');
+            
+            // 增强的元素查找
+            const imageElement = await this.findTargetElement(element);
 
             // 确保浏览器完成重绘并等待资源加载
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 500)); // 增加等待时间确保渲染完成
 
-            // 使用canvas方法以便添加水印
-            const canvas = await htmlToImage.toCanvas(imageElement, this.getExportConfig(imageElement));
-            
-            // 添加水印
-            const watermarkedCanvas = await this.addWatermark(canvas);
+            // 临时移除可能导致额外边距的样式
+            const originalStyles = {
+                padding: imageElement.style.padding,
+                paddingBottom: imageElement.style.paddingBottom,
+                boxShadow: imageElement.style.boxShadow,
+                margin: imageElement.style.margin
+            };
 
-            // 标记笔记为已导出
-            const noteId = this.getCurrentNoteId();
-            if (noteId) {
-                await this.markNoteAsExported(noteId);
-            }
+            // 移除内边距、外边距和阴影，确保只导出内容
+            imageElement.style.padding = '0px';
+            imageElement.style.paddingBottom = '0px';
+            imageElement.style.boxShadow = 'none';
+            imageElement.style.margin = '0px';
 
-            // 转换为blob并下载
-            watermarkedCanvas.toBlob((blob) => {
-                if (!blob) {
-                    throw new Error('Canvas 转换为 Blob 失败');
+            try {
+                // 使用canvas方法以便添加水印
+                const canvas = await htmlToImage.toCanvas(imageElement, this.getExportConfig(imageElement));
+                
+                // 添加水印
+                const watermarkedCanvas = await this.addWatermark(canvas);
+
+                // 标记笔记为已导出
+                const noteId = this.getCurrentNoteId();
+                if (noteId) {
+                    await this.markNoteAsExported(noteId);
                 }
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `小红书笔记_${new Date().getTime()}.png`;
 
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            }, 'image/png', 1);
+                // 转换为blob并下载
+                watermarkedCanvas.toBlob((blob) => {
+                    if (!blob) {
+                        throw new Error('Canvas 转换为 Blob 失败');
+                    }
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `小红书笔记_${new Date().getTime()}.png`;
+
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, 'image/png', 1);
+            } finally {
+                // 恢复原始样式
+                Object.assign(imageElement.style, originalStyles);
+            }
         } catch (error) {
             console.error('导出图片失败:', error);
             throw error;

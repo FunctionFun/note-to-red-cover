@@ -1,7 +1,7 @@
 
 import  RedPlugin  from '../main';
 import { EventEmitter } from 'events';
-interface RedSettings {
+export interface RedSettings {
     donateCount?: number;
     lastDonatePrompt?: number;
     templateId: string;
@@ -85,7 +85,7 @@ export const DEFAULT_SETTINGS: RedSettings = {
     ],
     // 水印默认设置
     watermarkSettings: {
-        enabled: true,
+        enabled: false,
         watermarkText: '小红书笔记',
         watermarkImage: '',
         opacity: 0.2,

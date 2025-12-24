@@ -2,7 +2,7 @@
 	"name": "note-to-red-cover",
 	"version": "1.0.0",
 	"description": "将Obsidian笔记导出为小红书封面图片",
-	"main": "main.js",
+	"main": "main.ts",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",

@@ -7,6 +7,7 @@ import { BackgroundSettingModal } from './modals/BackgroundSettingModal';
 import type { SettingsManager } from './settings/settings';
 import { ClipboardManager } from './clipboardManager';
 import { ImgTemplateManager } from './imgTemplateManager';
+import { WatermarkManager } from './watermarkManager';
 export const VIEW_TYPE_RED = 'note-to-red';
 
 export class RedView extends ItemView {
@@ -28,13 +29,13 @@ export class RedView extends ItemView {
         prev: HTMLButtonElement;
         next: HTMLButtonElement;
         indicator: HTMLElement;
-    } | undefined;
+    };
 
-    // 管理器实例
     private settingsManager: SettingsManager;
-    private imgTemplateManager: ImgTemplateManager;
     private downloadManager: DownloadManager;
     private backgroundManager: BackgroundManager;
+    private imgTemplateManager: ImgTemplateManager;
+    private watermarkManager: WatermarkManager;
     // #endregion
 
     // #region 基础视图方法
@@ -49,6 +50,7 @@ export class RedView extends ItemView {
         );
         this.downloadManager = new DownloadManager(this.settingsManager, this.app);
         this.backgroundManager = new BackgroundManager();
+        this.watermarkManager = new WatermarkManager();
     }
 
     getViewType() {
@@ -191,17 +193,25 @@ export class RedView extends ItemView {
                 watermark.remove();
             });
 
+            // 使用getBoundingClientRect获取容器的实际像素尺寸
             const { width, height } = previewElement.getBoundingClientRect();
-            const { watermarkText, watermarkImage, opacity, count } = watermarkSettings;
+            
+            // 获取统一的随机种子，确保预览和导出的一致性
+            const seed = this.watermarkManager.getWatermarkSeed();
+            
+            // 使用WatermarkManager生成水印位置
+            const positions = this.watermarkManager.generateWatermarkPositions({
+                containerWidth: width,
+                containerHeight: height,
+                settings: watermarkSettings,
+                seed: seed
+            });
 
-            // 生成指定数量的水印
-            for (let i = 0; i < count; i++) {
-                // 随机位置
-                const x = Math.random() * width;
-                const y = Math.random() * height;
-                
-                // 随机旋转角度 (-30 到 30 度)
-                const rotation = (Math.random() * 60 - 30);
+            const { watermarkText, watermarkImage, opacity } = watermarkSettings;
+
+            // 根据生成的位置创建水印
+            positions.forEach((position) => {
+                const { x, y, rotation } = position;
 
                 let watermarkElement: HTMLElement;
 
@@ -214,14 +224,14 @@ export class RedView extends ItemView {
                     watermarkElement = imgElement;
                 } else if (watermarkText) {
                     // 创建文字水印
-                const divElement = document.createElement('div');
-                divElement.textContent = watermarkText;
-                divElement.style.font = '24px Arial';
-                divElement.style.color = watermarkSettings.watermarkColor;
-                divElement.style.whiteSpace = 'nowrap';
-                watermarkElement = divElement;
+                    const divElement = document.createElement('div');
+                    divElement.textContent = watermarkText;
+                    divElement.style.font = '24px Arial';
+                    divElement.style.color = watermarkSettings.watermarkColor;
+                    divElement.style.whiteSpace = 'nowrap';
+                    watermarkElement = divElement;
                 } else {
-                    continue;
+                    return;
                 }
 
                 // 设置水印样式
@@ -236,7 +246,7 @@ export class RedView extends ItemView {
 
                 // 添加水印到预览元素
                 previewElement.appendChild(watermarkElement);
-            }
+            });
         });
     }
 
