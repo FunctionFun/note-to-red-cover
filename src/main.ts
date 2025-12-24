@@ -34,17 +34,7 @@ export default class RedPlugin extends Plugin {
             })
         );
 
-        // 注册文件列表渲染钩子
-        this.app.workspace.onLayoutReady(() => {
-            this.addExportedIndicator();
-        });
 
-        // 监听文件打开事件，更新标识
-        this.registerEvent(
-            this.app.workspace.on('file-open', () => {
-                this.addExportedIndicator();
-            })
-        );
 
     // 添加首次加载自动打开视图的逻辑
     // this.app.workspace.onLayoutReady(() => {
@@ -100,53 +90,5 @@ export default class RedPlugin extends Plugin {
     }
   }
 
-  // 添加已导出标识到文件列表
-  private addExportedIndicator() {
-    // 获取所有文件浏览器视图
-    const fileExplorers = this.app.workspace.getLeavesOfType('file-explorer');
-    
-    fileExplorers.forEach(leaf => {
-      const explorerContainer = leaf.view.containerEl;
-      const fileItems = explorerContainer.querySelectorAll('.nav-file');
-      
-      fileItems.forEach(item => {
-        const filePath = item.getAttribute('data-path');
-        if (!filePath) return;
-        
-        // 检查是否已经添加了标识
-        let indicator = item.querySelector('.red-exported-indicator') as HTMLElement;
-        
-        // 获取已导出笔记列表
-        const settings = this.settingsManager.getSettings();
-        const isExported = settings.exportedNotes.includes(filePath);
-        
-        if (isExported) {
-          // 如果是已导出的笔记，添加或显示标识
-          if (!indicator) {
-            indicator = document.createElement('span') as HTMLElement;
-            indicator.className = 'red-exported-indicator';
-            indicator.innerHTML = '✓';
-            indicator.style.cssText = `
-              margin-left: 5px;
-              font-size: 12px;
-              color: #666;
-              opacity: 0.7;
-            `;
-            
-            const fileNameEl = item.querySelector('.nav-file-title-content');
-            if (fileNameEl) {
-              fileNameEl.appendChild(indicator);
-            }
-          } else {
-            indicator.style.display = 'inline';
-          }
-        } else {
-          // 如果不是已导出的笔记，隐藏或移除标识
-          if (indicator) {
-            indicator.style.display = 'none';
-          }
-        }
-      });
-    });
-  }
+
 }

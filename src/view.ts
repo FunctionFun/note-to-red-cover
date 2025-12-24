@@ -40,18 +40,18 @@ export class RedView extends ItemView {
 
     // #region 基础视图方法
     constructor(
-        leaf: WorkspaceLeaf,
-        settingsManager: SettingsManager
-    ) {
-        super(leaf);
-        this.settingsManager = settingsManager;
-        this.imgTemplateManager = new ImgTemplateManager(
-            this.settingsManager
-        );
-        this.downloadManager = new DownloadManager(this.settingsManager, this.app);
-        this.backgroundManager = new BackgroundManager();
-        this.watermarkManager = new WatermarkManager();
-    }
+		leaf: WorkspaceLeaf,
+		settingsManager: SettingsManager
+	) {
+		super(leaf);
+		this.settingsManager = settingsManager;
+		this.imgTemplateManager = new ImgTemplateManager(
+			this.settingsManager
+		);
+		this.downloadManager = new DownloadManager(this.settingsManager, this.app);
+		this.backgroundManager = new BackgroundManager();
+		this.watermarkManager = new WatermarkManager();
+	}
 
     getViewType() {
         return VIEW_TYPE_RED;
@@ -600,9 +600,13 @@ export class RedView extends ItemView {
         this.previewEl.empty();
 
         const content = await this.app.vault.cachedRead(this.currentFile);
+        
+        // 过滤掉图片预览中不需要显示的导出状态属性
+        const filteredContent = content.replace(/---\n导出状态: 已导出\n---\n?/g, '');
+        
         await MarkdownRenderer.render(
             this.app,
-            content,
+            filteredContent,
             this.previewEl,
             this.currentFile.path,
             this

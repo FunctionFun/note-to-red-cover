@@ -64,7 +64,7 @@ export class RedConverter {
             // 使用固定的400px宽度和600px高度
             imagePreview.style.width = '400px';
             imagePreview.style.height = '600px';
-            imagePreview.style.backgroundColor = 'transparent';
+            imagePreview.style.backgroundColor = 'var(--background-primary)';
             // 设置默认transform和transform-origin值
             imagePreview.style.transform = 'scale(0.7)';
             imagePreview.style.transformOrigin = 'top center';
@@ -110,7 +110,7 @@ export class RedConverter {
         imagePreview.style.width = '400px';
         imagePreview.style.height = '600px';
         // 设置默认背景色，确保即使没有内容也能看到预览区域
-        imagePreview.style.backgroundColor = 'transparent';
+        imagePreview.style.backgroundColor = 'var(--background-primary)';
         imagePreview.style.position = 'relative';
         // 设置默认transform和transform-origin值
         imagePreview.style.transform = 'scale(0.7)';

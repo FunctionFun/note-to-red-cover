@@ -2,8 +2,7 @@
 .red-preview-wrapper {
     position: relative;
     margin: 10px;
-    /* background: var(--background-primary); */
-    background: #625aff;
+    background: var(--background-primary);
     flex: 1;
     font-size: 1rem;
     overflow: hidden;
@@ -22,8 +21,7 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    /* background: var(--background-primary); */
-    background-color: #625aff;
+    background: var(--background-primary); 
     border-radius: 12px;
     padding: 10px 0;
     max-height: 680px;
@@ -45,9 +43,9 @@
     /* 基础字体大小将由JavaScript动态设置 */
     font-size: 16px;
     zoom: 1;
-    background-color: #ebebeb !important;
     padding-bottom: 60px;
     /* 缩放将由JavaScript动态设置 */
+    background-color: var(--background-primary);
 }
 
 .red-image-preview p,

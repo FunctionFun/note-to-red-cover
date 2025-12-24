@@ -32,8 +32,7 @@ export interface RedSettings {
         scale: number;
         position: { x: number; y: number };
     };
-    // 导出标识
-    exportedNotes: string[];
+
     // 小红书作者信息
     xhsNickname: string;
     xhsAccount: string;
@@ -95,8 +94,7 @@ export const DEFAULT_SETTINGS: RedSettings = {
     // 背景配置默认设置
     backgroundId: '',
     backgroundSettings: { imageUrl: '', scale: 1, position: { x: 0, y: 0 } },
-    // 导出标识默认设置
-    exportedNotes: []
+
 }
 
 export class SettingsManager extends EventEmitter {
