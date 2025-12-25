@@ -1,39 +1,27 @@
-
-import  RedPlugin  from '../main';
+import RedPlugin from '../main';
 import { EventEmitter } from 'events';
+
 export interface RedSettings {
-    donateCount?: number;
-    lastDonatePrompt?: number;
     templateId: string;
     fontFamily: string;
     fontSize: number;
-    // 添加用户信息设置
-    userName: string;
-    notesTitle: string;
-    userId: string;
     showFooter?: boolean;
-    footerLeftText: string;
-    footerRightText: string;
-    useHorizontalRuleSplit: boolean; // 基于分割线分割内容的开关
-    customFonts: { value: string; label: string; isPreset?: boolean }[];  // 添加自定义字体配置
-    // 水印配置
+    useHorizontalRuleSplit: boolean;
+    customFonts: { value: string; label: string; isPreset?: boolean }[];
     watermarkSettings: {
         enabled: boolean;
         watermarkText: string;
         watermarkImage: string;
-        opacity: number; // 0.1 - 1
-        count: number; // 1 - 5
-        watermarkColor: string; // 十六进制颜色值
+        opacity: number;
+        count: number;
+        watermarkColor: string;
     };
-    // 背景配置
     backgroundId: string;
     backgroundSettings: {
         imageUrl: string;
         scale: number;
         position: { x: number; y: number };
     };
-
-    // 小红书作者信息
     xhsNickname: string;
     xhsAccount: string;
     xhsBio: string;
@@ -43,15 +31,7 @@ export const DEFAULT_SETTINGS: RedSettings = {
     templateId: 'default',
     fontFamily: 'Optima-Regular, Optima, PingFangSC-light, PingFangTC-light, "PingFang SC"',
     fontSize: 16,
-    // 修改默认用户信息
-    userName: '',
-    notesTitle: '',
-    userId: '',
-
-    useHorizontalRuleSplit: true, // 默认使用分割线分割内容
-    footerLeftText: '作者名称',
-    footerRightText: '作者账号 个人简介',
-    // 小红书作者信息默认值
+    useHorizontalRuleSplit: true,
     xhsNickname: '作者名称',
     xhsAccount: '@作者账号',
     xhsBio: '个人简介',
@@ -82,7 +62,6 @@ export const DEFAULT_SETTINGS: RedSettings = {
             isPreset: true
         }
     ],
-    // 水印默认设置
     watermarkSettings: {
         enabled: false,
         watermarkText: '小红书笔记',
@@ -91,10 +70,8 @@ export const DEFAULT_SETTINGS: RedSettings = {
         count: 2,
         watermarkColor: '#ebebeb'
     },
-    // 背景配置默认设置
     backgroundId: '',
-    backgroundSettings: { imageUrl: '', scale: 1, position: { x: 0, y: 0 } },
-
+    backgroundSettings: { imageUrl: '', scale: 1, position: { x: 0, y: 0 } }
 }
 
 export class SettingsManager extends EventEmitter {

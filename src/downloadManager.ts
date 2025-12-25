@@ -1,15 +1,12 @@
 import * as htmlToImage from "html-to-image";
 import JSZip from "jszip";
-import type { SettingsManager } from "./settings/settings";
 import type { App } from "obsidian";
 import { TFile } from "obsidian";
 
 export class DownloadManager {
-	// private settingsManager: SettingsManager;
 	private app: App;
 
-	constructor(_settingsManager: SettingsManager, app: App) {
-		// this.settingsManager = settingsManager;
+	constructor(app: App) {
 		this.app = app;
 	}
 
@@ -22,7 +19,6 @@ export class DownloadManager {
 	// 标记笔记为已导出（通过笔记属性）
 	private async markNoteAsExported(noteId: string): Promise<void> {
 		const file = this.app.vault.getAbstractFileByPath(noteId);
-		// 确保file是TFile类型
 		if (!(file instanceof TFile)) return;
 		
 		const tFile = file;
@@ -66,16 +62,15 @@ ${content}`;
 		}
 		return lines.join("\n") + "\n";
 	}
+
 	// 添加共用的导出配置方法
-	private getExportConfig(_imageElement: HTMLElement) {
+	private getExportConfig() {
 		return {
 			width: 400,
 			height: 600,
-			scale: 2, // 2倍缩放，提升清晰度
+			scale: 2,
 			skipFonts: false,
-			// 处理图片加载错误
-			imagePlaceholder:
-				"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+			imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 		};
 	}
 
@@ -143,7 +138,7 @@ ${content}`;
 						// 使用canvas方法以便添加水印
 						const canvas = await htmlToImage.toCanvas(
 							imageElement,
-							this.getExportConfig(imageElement)
+							this.getExportConfig()
 						);
 
 						// 转换为blob
@@ -205,16 +200,10 @@ ${content}`;
 			});
 
 			if (!(content instanceof Blob)) {
-				throw new Error("生成的压缩文件不是有效的 Blob 对象");
-			}
+            throw new Error("生成的压缩文件不是有效的 Blob 对象");
+        }
 
-
-
-
-
-
-
-			const url = URL.createObjectURL(content);
+        const url = URL.createObjectURL(content);
 			const link = Object.assign(document.createElement("a"), {
 				href: url,
 				download: `小红书笔记_${Date.now()}.zip`,
@@ -360,7 +349,7 @@ ${content}`;
 				// 转换为 PNG Base64 格式
 				const dataUrl = await htmlToImage.toCanvas(
 					imageElement,
-					this.getExportConfig(imageElement)
+					this.getExportConfig()
 				);
 
 				// 转换为blob并下载

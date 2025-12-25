@@ -1,11 +1,10 @@
-import { ItemView, WorkspaceLeaf, MarkdownRenderer, TFile, Notice, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownRenderer, TFile, setIcon } from 'obsidian';
 import { RedConverter } from './converter';
 import { DownloadManager } from './downloadManager';
 import { BackgroundManager } from './backgroundManager';
 import { BackgroundSettingModal } from './modals/BackgroundSettingModal';
 
 import type { SettingsManager } from './settings/settings';
-import { ClipboardManager } from './clipboardManager';
 import { ImgTemplateManager } from './imgTemplateManager';
 import { WatermarkManager } from './watermarkManager';
 export const VIEW_TYPE_RED = 'note-to-red';
@@ -22,7 +21,6 @@ export class RedView extends ItemView {
 
     // UI 元素
     private lockButton: HTMLButtonElement;
-    private copyButton: HTMLButtonElement;
     private customFontSelect: HTMLElement;
     private fontSizeSelect: HTMLInputElement;
     private navigationButtons: {
@@ -30,6 +28,7 @@ export class RedView extends ItemView {
         next: HTMLButtonElement;
         indicator: HTMLElement;
     };
+    private copyButton: HTMLButtonElement;
 
     private settingsManager: SettingsManager;
     private downloadManager: DownloadManager;
@@ -48,7 +47,7 @@ export class RedView extends ItemView {
 		this.imgTemplateManager = new ImgTemplateManager(
 			this.settingsManager
 		);
-		this.downloadManager = new DownloadManager(this.settingsManager, this.app);
+		this.downloadManager = new DownloadManager(this.app);
 		this.backgroundManager = new BackgroundManager();
 		this.watermarkManager = new WatermarkManager();
 	}
@@ -278,7 +277,6 @@ export class RedView extends ItemView {
         this.registerEvent(
             this.app.vault.on('modify', this.onFileModify.bind(this))
         );
-        this.initializeCopyButtonListener();
         
         // 监听设置更新事件
         this.settingsManager.on('settings-updated', this.updatePreview.bind(this));
@@ -514,35 +512,6 @@ export class RedView extends ItemView {
         });
     }
 
-    private initializeCopyButtonListener() {
-        const copyButtonHandler = async (e: CustomEvent) => {
-            const { copyButton } = e.detail;
-            if (copyButton) {
-                copyButton.addEventListener('click', async () => {
-                    copyButton.disabled = true;
-                    try {
-                        // 检查是否需要显示捐赠弹窗
-
-
-                        await ClipboardManager.copyImageToClipboard(this.previewEl);
-                        new Notice('图片已复制到剪贴板');
-                    } catch (error) {
-                        new Notice('复制失败');
-                        console.error('复制图片失败:', error);
-                    } finally {
-                        setTimeout(() => {
-                            copyButton.disabled = false;
-                        }, 1000);
-                    }
-                });
-            }
-        };
-
-        this.containerEl.addEventListener('copy-button-added', copyButtonHandler as EventListener);
-        this.register(() => {
-            this.containerEl.removeEventListener('copy-button-added', copyButtonHandler as EventListener);
-        });
-    }
     // #endregion
 
     // #region 设置管理

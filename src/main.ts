@@ -1,61 +1,30 @@
-import { Plugin, Notice, WorkspaceLeaf } from 'obsidian';
-import { RedView, VIEW_TYPE_RED } from './view';  // 暂时改回原来的导入
-
+import { Plugin, WorkspaceLeaf } from 'obsidian';
+import { RedView, VIEW_TYPE_RED } from './view';
 import { SettingsManager } from './settings/settings';
-import { RedConverter } from './converter';  // 暂时使用原来的转换器
-
+import { RedConverter } from './converter';
 import { RedSettingTab } from './settings/SettingTab';
 
 export default class RedPlugin extends Plugin {
   settingsManager: SettingsManager;
 
   async onload() {
-        // 初始化设置管理器
-        this.settingsManager = new SettingsManager(this);
-        await this.settingsManager.loadSettings();
+    // 初始化设置管理器
+    this.settingsManager = new SettingsManager(this);
+    await this.settingsManager.loadSettings();
 
+    // 初始化转换器
+    RedConverter.initialize(this.app, this);
 
-
-        // 初始化转换器
-        RedConverter.initialize(this.app, this);
-
-
-
-        // 注册视图
-        this.registerView(
-            VIEW_TYPE_RED,
-            (leaf) => new RedView(leaf, this.settingsManager)
-        );
-
-        // 注册文件列表项渲染钩子，添加导出标识
-        this.registerEvent(
-            this.app.workspace.on('file-menu', (_menu, _file) => {
-                // 这里可以添加右键菜单功能，但不是我们需要的导出标识
-            })
-        );
-
-
-
-    // 添加首次加载自动打开视图的逻辑
-    // this.app.workspace.onLayoutReady(() => {
-    //   this.app.workspace.on("layout-change", () => {
-    //     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_RED);
-    //     if (leaves.length === 0) {
-    //       const rightLeaf = this.app.workspace.getRightLeaf(false);
-    //       if (rightLeaf) {
-    //         rightLeaf.setViewState({
-    //           type: VIEW_TYPE_RED,
-    //           active: false,
-    //         });
-    //       }
-    //     }
-    //   });
-    // });
+    // 注册视图
+    this.registerView(
+      VIEW_TYPE_RED,
+      (leaf) => new RedView(leaf, this.settingsManager)
+    );
 
     // 添加命令到命令面板
     this.addCommand({
-            id: 'open-mp-preview',
-            name: '打开小红书图片预览',
+      id: 'open-mp-preview',
+      name: '打开小红书图片预览',
       callback: async () => {
         await this.activateView();
       },
@@ -72,7 +41,7 @@ export default class RedPlugin extends Plugin {
 
   async activateView() {
     // 如果视图已经存在，激活它
-        const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_RED);  // 使用原来的视图类型
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_RED);
     if (leaves.length > 0) {
       this.app.workspace.revealLeaf(leaves[0] as WorkspaceLeaf);
       return;
@@ -86,7 +55,7 @@ export default class RedPlugin extends Plugin {
         active: true,
       });
     } else {
-            new Notice('无法创建视图面板');
+      console.error('无法创建视图面板');
     }
   }
 

@@ -19,8 +19,7 @@ import 'prismjs/components/prism-shell-session';
 enum ElementGroupType {
     SingleElement,
     ListGroup,
-    CodeBlock,
-    ParagraphGroup
+    CodeBlock
 }
 
 /**
@@ -47,6 +46,8 @@ export class RedConverter {
         // 直接检查元素本身的内容，因为MarkdownRenderer直接渲染到该元素中
         return !!element.textContent && element.textContent.trim().length > 0;
     }
+
+
 
     static async formatContent(element: HTMLElement, currentFilePath = ''): Promise<void> {
         // 获取所有内容
@@ -233,20 +234,7 @@ export class RedConverter {
                 if (el.tagName === 'HR') {
                     // 只有当当前页面有实际内容时才添加到hrPages
                     if (currentPage.length > 0) {
-                        // 检查当前页面是否有实际内容
-                        const hasActualContent = currentPage.some(el => {
-                            if (el.tagName === 'OL' || el.tagName === 'UL') {
-                                return Array.from(el.querySelectorAll('li')).some(li => 
-                                    (li.textContent?.trim() || '').length > 0
-                                );
-                            }
-                            if (el.tagName === 'PRE') {
-                                return (el.textContent?.trim() || '').length > 0;
-                            }
-                            return (el.textContent?.trim() || '').length > 0;
-                        });
-                        
-                        if (hasActualContent) {
+                        if (this.hasActualContent(currentPage)) {
                             hrPages.push([...currentPage]);
                             currentPage.length = 0;
                         } else {
@@ -262,20 +250,7 @@ export class RedConverter {
             
             // 添加最后一个页面（如果有内容）
             if (currentPage.length > 0) {
-                // 检查最后一个页面是否有实际内容
-                const hasActualContent = currentPage.some(el => {
-                    if (el.tagName === 'OL' || el.tagName === 'UL') {
-                        return Array.from(el.querySelectorAll('li')).some(li => 
-                            (li.textContent?.trim() || '').length > 0
-                        );
-                    }
-                    if (el.tagName === 'PRE') {
-                        return (el.textContent?.trim() || '').length > 0;
-                    }
-                    return (el.textContent?.trim() || '').length > 0;
-                });
-                
-                if (hasActualContent) {
+                if (this.hasActualContent(currentPage)) {
                     hrPages.push([...currentPage]);
                 }
             }
@@ -393,22 +368,7 @@ export class RedConverter {
         // 移除空页面和只有空白内容的页面
         finalPages = finalPages.filter(page => {
             if (page.length === 0) return false;
-            
-            // 检查页面是否有实际内容
-            return page.some(el => {
-                if (el.tagName === 'OL' || el.tagName === 'UL') {
-                    // 检查列表是否有非空列表项
-                    return Array.from(el.querySelectorAll('li')).some(li => 
-                        (li.textContent?.trim() || '').length > 0
-                    );
-                }
-                if (el.tagName === 'PRE') {
-                    // 检查代码块是否有实际内容
-                    return (el.textContent?.trim() || '').length > 0;
-                }
-                // 检查其他元素是否有实际内容
-                return (el.textContent?.trim() || '').length > 0;
-            });
+            return this.hasActualContent(page);
         });
         
         // 创建一个容器元素来包含所有页面
@@ -486,9 +446,6 @@ export class RedConverter {
                 case ElementGroupType.ListGroup:
                     this.processListGroup(group, currentPage, pages, maxHeight, tempSection);
                     break;
-                case ElementGroupType.ParagraphGroup:
-                    this.processParagraphGroup(group, currentPage, pages, maxHeight, tempSection);
-                    break;
                 default:
                     this.processSingleElementGroup(group, currentPage, pages, maxHeight, tempSection);
             }
@@ -496,24 +453,7 @@ export class RedConverter {
         
         // 添加最后一页（确保只添加非空页面）
         if (currentPage.length > 0) {
-            // 检查页面内容是否有实际文本或图片
-            const hasActualContent = currentPage.some(el => {
-                // 检查是否包含图片
-                if (el.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image')) {
-                    return true;
-                }
-                // 对于列表和代码块，检查是否有内容
-                if (el.tagName === 'OL' || el.tagName === 'UL') {
-                    return Array.from(el.querySelectorAll('li')).some(li => (li.textContent?.trim() || '').length > 0);
-                }
-                if (el.tagName === 'PRE') {
-                    return (el.textContent?.trim() || '').length > 0;
-                }
-                // 其他元素直接检查文本内容
-                return (el.textContent?.trim() || '').length > 0;
-            });
-            
-            if (hasActualContent) {
+            if (this.hasActualContent(currentPage)) {
                 pages.push(currentPage);
             }
         }
@@ -526,31 +466,73 @@ export class RedConverter {
         // 过滤掉所有空页面或只有空白内容的页面
         return pages.filter(page => {
             if (page.length === 0) return false;
-            
-            // 检查页面是否有实际内容（文本或图片）
-            return page.some(el => {
-                // 检查是否包含图片
-                if (el.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image')) {
-                    return true;
-                }
-                
-                if (el.tagName === 'OL' || el.tagName === 'UL') {
-                    return Array.from(el.querySelectorAll('li')).some(li => {
-                        // 检查列表项是否有文本或包含图片
-                        if (li.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image')) {
-                            return true;
-                        }
-                        return (li.textContent?.trim() || '').length > 0;
-                    });
-                }
-                
-                if (el.tagName === 'PRE') {
-                    return (el.textContent?.trim() || '').length > 0;
-                }
-                
-                return (el.textContent?.trim() || '').length > 0;
-            });
+            return this.hasActualContent(page);
         });
+    }
+
+    /**
+     * 检查元素数组是否包含实际内容
+     * @param elements 要检查的元素数组
+     */
+    private static hasActualContent(elements: Element[]): boolean {
+        return elements.some(el => {
+            // 检查是否包含图片
+            if (el.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image')) {
+                return true;
+            }
+            
+            if (el.tagName === 'OL' || el.tagName === 'UL') {
+                return Array.from(el.querySelectorAll('li')).some(li => {
+                    // 检查列表项是否有文本或包含图片
+                    if (li.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image')) {
+                        return true;
+                    }
+                    return (li.textContent?.trim() || '').length > 0;
+                });
+            }
+            
+            if (el.tagName === 'PRE') {
+                return (el.textContent?.trim() || '').length > 0;
+            }
+            
+            return (el.textContent?.trim() || '').length > 0;
+        });
+    }
+    
+    /**
+     * 创建带有样式的临时列表元素
+     * @param isOrderedList 是否为有序列表
+     * @param startIndex 起始索引（仅对有序列表有效）
+     * @param tempSection 临时section元素（用于获取样式）
+     */
+    private static createStyledTempList(isOrderedList: boolean, startIndex: number | undefined, tempSection: HTMLElement): HTMLElement {
+        const tempList = document.createElement(isOrderedList ? 'ol' : 'ul');
+        if (isOrderedList && startIndex !== undefined) {
+            tempList.setAttribute('start', startIndex.toString());
+        }
+        // 应用与实际渲染一致的列表样式，确保高度测量准确
+        tempList.style.fontSize = tempSection.style.fontSize;
+        tempList.style.lineHeight = tempSection.style.lineHeight;
+        tempList.style.marginBottom = '0.5rem';
+        tempList.style.paddingLeft = '1.5rem';
+        tempList.style.listStyleType = isOrderedList ? 'decimal' : 'disc';
+        tempList.style.boxSizing = 'border-box';
+        return tempList;
+    }
+    
+    /**
+     * 保存当前页面到pages数组并重置currentPage
+     * @param currentPage 当前页面内容
+     * @param pages 所有页面数组
+     */
+    private static saveCurrentPage(currentPage: Element[], pages: Element[][]): void {
+        if (currentPage.length > 0) {
+            const pageHasContent = this.hasActualContent(currentPage);
+            if (pageHasContent) {
+                pages.push([...currentPage]);
+            }
+            currentPage.length = 0;
+        }
     }
 
     /**
@@ -605,569 +587,6 @@ export class RedConverter {
 
     
     /**
-     * 处理单个元素分组
-     * @param group 元素分组
-     * @param currentPage 当前页面内容
-     * @param pages 所有页面
-     * @param maxHeight 最大高度
-     * @param tempSection 临时section
-     */
-    private static processSingleElementGroup(group: ElementGroup, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
-        this.processGenericGroup(group, currentPage, pages, maxHeight, tempSection);
-    }
-    
-    /**
-     * 处理代码块分组
-     * @param group 元素分组
-     * @param currentPage 当前页面内容
-     * @param pages 所有页面
-     * @param maxHeight 最大高度
-     * @param tempSection 临时section
-     */
-    private static processCodeBlockGroup(group: ElementGroup, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
-        const codeBlock = group.elements[0];
-        
-        // 如果不是PRE元素，使用通用处理
-        if (codeBlock!.tagName !== 'PRE') {
-            this.processGenericGroup(group, currentPage, pages, maxHeight, tempSection);
-            return;
-        }
-        
-        // 获取代码内容和语法高亮类
-        const codeContent = codeBlock!.textContent || '';
-        
-        // 检查代码块是否有实际内容
-        if (!codeContent.trim()) {
-            return; // 跳过空代码块
-        }
-        
-        const codeElement = codeBlock!.querySelector('code');
-        const langClass = codeElement?.className || '';
-        
-        // 按行分割代码并过滤空行
-        const codeLines = codeContent.split('\n').filter(line => line.trim().length > 0);
-        
-        // 如果代码只有一行或空行，直接处理
-        if (codeLines.length <= 1) {
-            const clonedBlock = codeBlock!.cloneNode(true) as Element;
-            if (clonedBlock.tagName === 'PRE') {
-                clonedBlock.classList.add('red-pre');
-            }
-            
-            tempSection.innerHTML = '';
-            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
-            tempSection.appendChild(clonedBlock);
-            
-            tempSection.style.height = 'auto';
-            tempSection.style.overflow = 'visible';
-            
-            if (tempSection.scrollHeight <= maxHeight) {
-                currentPage.push(codeBlock!);
-            } else {
-                if (currentPage.length > 0) {
-                    // 检查当前页面是否有内容
-                    const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                    if (pageHasContent) {
-                        pages.push([...currentPage]);
-                    }
-                    currentPage.length = 0;
-                    tempSection.innerHTML = '';
-                }
-                currentPage.push(codeBlock!);
-            }
-            return;
-        }
-        
-        let currentCodePage: string[] = [];
-        
-        // 遍历所有代码行，逐行分页
-        for (let i = 0; i < codeLines.length; i++) {
-            const line = codeLines[i];
-            const testLines = [...currentCodePage, line];
-            
-            // 创建临时代码块
-            const tempPre = document.createElement('pre');
-            tempPre.className = `red-pre ${codeBlock!.className}`;
-            const tempCode = document.createElement('code');
-            tempCode.className = langClass;
-            tempCode.textContent = testLines.join('\n');
-            tempPre.appendChild(tempCode);
-            
-            // 测量高度
-            tempSection.innerHTML = '';
-            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
-            tempSection.appendChild(tempPre);
-            
-            tempSection.style.height = 'auto';
-            tempSection.style.overflow = 'visible';
-            
-            if (tempSection.scrollHeight <= maxHeight) {
-                // 可以添加到当前代码页
-                currentCodePage.push(line!);
-            } else {
-                // 需要分页
-                if (currentCodePage.length > 0) {
-                    // 创建当前页面的代码块
-                    const pagePre = document.createElement('pre');
-                    pagePre.className = `red-pre ${codeBlock!.className}`;
-                    const pageCode = document.createElement('code');
-                    pageCode.className = langClass;
-                    pageCode.textContent = currentCodePage.join('\n');
-                    pagePre.appendChild(pageCode);
-                    
-                    // 检查当前页面是否有空间
-                    tempSection.innerHTML = '';
-                    currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
-                    tempSection.appendChild(pagePre);
-                    
-                    tempSection.style.height = 'auto';
-                    tempSection.style.overflow = 'visible';
-                    
-                    if (tempSection.scrollHeight <= maxHeight) {
-                        currentPage.push(pagePre);
-                    } else {
-                        // 当前页面已满，保存并创建新页面
-                        if (currentPage.length > 0) {
-                            const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                            if (pageHasContent) {
-                                pages.push([...currentPage]);
-                            }
-                            currentPage.length = 0;
-                        }
-                        currentPage.push(pagePre);
-                    }
-                    
-                    // 重置当前代码页，从当前行开始新页面
-                    currentCodePage = [line!];
-                } else {
-                    // 单行代码就超过了最大高度，单独占一页
-                    const singleLinePre = document.createElement('pre');
-                    singleLinePre.className = `red-pre ${codeBlock!.className}`;
-                    const singleLineCode = document.createElement('code');
-                    singleLineCode.className = langClass;
-                    singleLineCode.textContent = line!;
-                    singleLinePre.appendChild(singleLineCode);
-                    
-                    // 检查当前页面是否有空间
-                    tempSection.innerHTML = '';
-                    currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
-                    tempSection.appendChild(singleLinePre);
-                    
-                    tempSection.style.height = 'auto';
-                    tempSection.style.overflow = 'visible';
-                    
-                    if (tempSection.scrollHeight <= maxHeight) {
-                        // 当前页面还有空间，直接添加
-                        currentPage.push(singleLinePre);
-                    } else {
-                        // 当前页面已满，保存并创建新页面
-                        if (currentPage.length > 0) {
-                            const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                            if (pageHasContent) {
-                                pages.push([...currentPage]);
-                            }
-                            currentPage.length = 0;
-                        }
-                        currentPage.push(singleLinePre);
-                    }
-                }
-            }
-        }
-        
-        // 处理剩余的代码行，确保只包含实际内容
-        const nonEmptyCodePage = currentCodePage.filter(line => line.trim().length > 0);
-        if (nonEmptyCodePage.length > 0) {
-            // 创建剩余代码的代码块
-            const pagePre = document.createElement('pre');
-            pagePre.className = `red-pre ${codeBlock!.className}`;
-            const pageCode = document.createElement('code');
-            pageCode.className = langClass;
-            pageCode.textContent = nonEmptyCodePage.join('\n');
-            pagePre.appendChild(pageCode);
-            
-            // 检查当前页面是否有空间
-            tempSection.innerHTML = '';
-            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
-            tempSection.appendChild(pagePre);
-            
-            tempSection.style.height = 'auto';
-            tempSection.style.overflow = 'visible';
-            
-            if (tempSection.scrollHeight <= maxHeight) {
-                currentPage.push(pagePre);
-            } else {
-                // 当前页面已满，保存并创建新页面
-                if (currentPage.length > 0) {
-                    const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                    if (pageHasContent) {
-                        pages.push([...currentPage]);
-                    }
-                    currentPage.length = 0;
-                }
-                currentPage.push(pagePre);
-            }
-        }
-    }
-    
-    /**
-     * 处理列表分组
-     * @param group 元素分组
-     * @param currentPage 当前页面内容
-     * @param pages 所有页面
-     * @param maxHeight 最大高度
-     * @param tempSection 临时section
-     */
-    private static processListGroup(group: ElementGroup, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
-        // 获取完整列表元素
-        const listElement = group.elements[0];
-        if (!listElement) return;
-        
-        const isOrderedList = group.isOrderedList || listElement.tagName === 'OL';
-        const startIndex = group.startIndex || parseInt(listElement.getAttribute('start') || '1');
-        
-        // 获取所有列表项
-        const listItems = Array.from(listElement.querySelectorAll('li'));
-        
-        // 过滤掉空列表项（但保留包含图片的列表项）
-        const nonEmptyListItems = listItems.filter(item => {
-            const hasTextContent = (item.textContent?.trim() || '').length > 0;
-            const hasImage = item.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
-            return hasTextContent || hasImage;
-        });
-        
-        // 如果没有非空列表项且列表元素没有内容，跳过
-        if (nonEmptyListItems.length === 0) {
-            const hasContent = (listElement.textContent?.trim() || '').length > 0;
-            const hasImage = listElement.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
-            if (hasContent || hasImage) {
-                currentPage.push(listElement);
-            }
-            return;
-        }
-        
-        let currentListItemPage: Element[] = [];
-        let currentStartIndex = startIndex;
-        
-        // 遍历所有非空列表项，检查是否需要分页
-        for (let i = 0; i < nonEmptyListItems.length; i++) {
-            const listItem = nonEmptyListItems[i];
-            
-            // 克隆列表项以保留原始样式
-            const clonedItem = listItem!.cloneNode(true) as HTMLElement;
-            
-            // 创建临时列表容器，用于测量高度
-            const tempList = document.createElement(isOrderedList ? 'ol' : 'ul');
-            if (isOrderedList) {
-                tempList.setAttribute('start', currentStartIndex.toString());
-            }
-            // 应用与实际渲染一致的列表样式，确保高度测量准确
-            tempList.style.fontSize = tempSection.style.fontSize;
-            tempList.style.lineHeight = tempSection.style.lineHeight;
-            tempList.style.marginBottom = '0.5rem';
-            tempList.style.paddingLeft = '1.5rem';
-            tempList.style.listStyleType = isOrderedList ? 'decimal' : 'disc';
-            tempList.style.boxSizing = 'border-box';
-            
-            // 添加当前列表页的所有列表项（如果有）
-            currentListItemPage.forEach(item => tempList.appendChild(item.cloneNode(true) as Element));
-            // 添加当前要检查的列表项
-            tempList.appendChild(clonedItem);
-            
-            // 测量高度
-            tempSection.innerHTML = '';
-            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
-            tempSection.appendChild(tempList);
-            
-            tempSection.style.height = 'auto';
-            tempSection.style.overflow = 'visible';
-            
-            // 检查是否超出最大高度
-            if (tempSection.scrollHeight <= maxHeight) {
-                // 列表项可以放入当前页面，添加到当前列表页
-                currentListItemPage.push(listItem!);
-            } else {
-                // 当前列表项导致页面溢出
-                if (currentListItemPage.length > 0) {
-                    // 保存当前页面的列表项到新页面
-                    const pageListContainer = document.createElement(isOrderedList ? 'ol' : 'ul');
-                    if (isOrderedList) {
-                        pageListContainer.setAttribute('start', currentStartIndex.toString());
-                    }
-                    currentListItemPage.forEach(item => pageListContainer.appendChild(item.cloneNode(true) as Element));
-                    
-                    // 将当前列表页添加到当前页面
-                    currentPage.push(pageListContainer);
-                    
-                    // 保存当前页面并创建新页面
-                    const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                    if (pageHasContent) {
-                        pages.push([...currentPage]);
-                    }
-                    currentPage.length = 0;
-                    
-                    // 更新起始索引并重置当前列表页
-                    currentStartIndex += currentListItemPage.length;
-                    currentListItemPage = [];
-                    i--; // 重试当前列表项
-                } else {
-                    // 单个列表项非常长，需要拆分成多行
-                    // 检查当前页面是否为空
-                    if (currentPage.length > 0) {
-                        // 当前页面已有内容，创建新页面
-                        const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                        if (pageHasContent) {
-                            pages.push([...currentPage]);
-                        }
-                        currentPage.length = 0;
-                    }
-                    
-                    // 处理长列表项
-                    this.handleLongListItem(listItem!, isOrderedList, currentStartIndex, currentPage, pages, maxHeight, tempSection);
-                    currentStartIndex++;
-                }
-            }
-        }
-        
-        // 处理剩余的列表项
-        if (currentListItemPage.length > 0) {
-            const pageListContainer = document.createElement(isOrderedList ? 'ol' : 'ul');
-            if (isOrderedList) {
-                pageListContainer.setAttribute('start', currentStartIndex.toString());
-            }
-            currentListItemPage.forEach(item => pageListContainer.appendChild(item.cloneNode(true) as Element));
-            
-            // 检查是否能放入当前页面
-            tempSection.innerHTML = '';
-            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
-            tempSection.appendChild(pageListContainer);
-            
-            // 确保列表项不会被截断在页面底部
-            if (tempSection.scrollHeight <= maxHeight) {
-                currentPage.push(pageListContainer);
-            } else {
-                // 当前页面已满，创建新页面
-                if (currentPage.length > 0) {
-                    const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                    if (pageHasContent) {
-                        pages.push([...currentPage]);
-                    }
-                    currentPage.length = 0;
-                }
-                currentPage.push(pageListContainer);
-            }
-        }
-    }
-    
-    /**
-     * 处理超长列表项，将其拆分成多行
-     * @param listItem 超长列表项
-     * @param isOrderedList 是否为有序列表
-     * @param startIndex 起始索引
-     * @param currentPage 当前页面内容
-     * @param pages 所有页面
-     * @param maxHeight 最大高度
-     * @param tempSection 临时section
-     */
-    private static handleLongListItem(listItem: Element, isOrderedList: boolean, startIndex: number, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
-        const listContent = listItem.textContent || '';
-        const hasImage = listItem.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
-        
-        // 如果列表项内容为空且没有图片，直接返回
-        if (!listContent.trim() && !hasImage) return;
-        
-        // 创建临时列表项，用于测量高度
-        const tempListItem = listItem.cloneNode(true) as HTMLElement;
-        const tempList = document.createElement(isOrderedList ? 'ol' : 'ul');
-        if (isOrderedList) {
-            tempList.setAttribute('start', startIndex.toString());
-        }
-        // 应用与实际渲染一致的列表样式，确保高度测量准确
-        tempList.style.fontSize = tempSection.style.fontSize;
-        tempList.style.lineHeight = tempSection.style.lineHeight;
-        tempList.style.marginBottom = '0.5rem';
-        tempList.style.paddingLeft = '1.5rem';
-        tempList.style.listStyleType = isOrderedList ? 'decimal' : 'disc';
-        tempList.style.boxSizing = 'border-box';
-        
-        // 先检查完整列表项是否能放入当前页面
-        tempSection.innerHTML = '';
-        currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
-        tempList.appendChild(tempListItem);
-        tempSection.appendChild(tempList);
-        
-        tempSection.style.height = 'auto';
-        tempSection.style.overflow = 'visible';
-        
-        if (tempSection.scrollHeight <= maxHeight) {
-            // 超长列表项能放入当前页面，直接添加
-            currentPage.push(tempList.cloneNode(true) as Element);
-            return;
-        }
-        
-        // 当前列表项无法放入当前页面，需要拆分
-        
-        // 1. 尝试按段落拆分（使用换行符分隔）
-        const paragraphs = listContent.split(/\n\s*\n/);
-        
-        const currentParagraphPage: string[] = [];
-        const remainingParagraphs: string[] = [...paragraphs];
-        
-        // 尝试找到最大可放入当前页面的段落数
-        while (remainingParagraphs.length > 0) {
-            // 添加一个段落
-            currentParagraphPage.push(remainingParagraphs.shift()!);
-            
-            // 创建临时内容
-            const tempContent = currentParagraphPage.join('\n\n');
-            
-            // 更新临时列表项的内容
-            tempListItem.textContent = tempContent;
-            
-            // 测量高度
-            tempSection.innerHTML = '';
-            const testList = document.createElement(isOrderedList ? 'ol' : 'ul');
-            if (isOrderedList) {
-                testList.setAttribute('start', startIndex.toString());
-            }
-            // 应用与实际渲染一致的列表样式，确保高度测量准确
-            testList.style.fontSize = tempSection.style.fontSize;
-            testList.style.lineHeight = tempSection.style.lineHeight;
-            testList.style.marginBottom = '0.5rem';
-            testList.style.paddingLeft = '1.5rem';
-            testList.style.listStyleType = isOrderedList ? 'decimal' : 'disc';
-            testList.style.boxSizing = 'border-box';
-            testList.appendChild(tempListItem.cloneNode(true) as Element);
-            tempSection.appendChild(testList);
-            
-            if (tempSection.scrollHeight > maxHeight) {
-                // 超出高度，移除最后添加的段落
-                remainingParagraphs.unshift(currentParagraphPage.pop()!);
-                break;
-            }
-        }
-        
-        // 2. 如果找到可放入当前页面的段落内容
-        if (currentParagraphPage.length > 0) {
-            // 创建当前页面的列表项
-            const currentPageListItem = listItem.cloneNode(true) as HTMLElement;
-            currentPageListItem.textContent = currentParagraphPage.join('\n\n');
-            
-            const currentPageList = document.createElement(isOrderedList ? 'ol' : 'ul');
-            if (isOrderedList) {
-                currentPageList.setAttribute('start', startIndex.toString());
-            }
-            currentPageList.appendChild(currentPageListItem);
-            
-            // 将当前段落内容添加到当前页面
-            currentPage.push(currentPageList);
-            
-            // 处理剩余内容
-            if (remainingParagraphs.length > 0) {
-                const remainingListItem = listItem.cloneNode(true) as HTMLElement;
-                remainingListItem.textContent = remainingParagraphs.join('\n\n');
-                
-                // 创建新页面
-                const newPage: Element[] = [];
-                pages.push(newPage);
-                
-                // 递归处理剩余内容
-                this.handleLongListItem(remainingListItem, isOrderedList, startIndex + 1, newPage, pages, maxHeight, tempSection);
-            }
-        } else {
-            // 3. 单个段落仍然太长，尝试按单词拆分
-            const singleParagraph = listContent;
-            const words = singleParagraph.split(' ');
-            
-            const currentWordPage: string[] = [];
-            const remainingWords: string[] = [...words];
-            
-            // 尝试找到最大可放入当前页面的单词数
-            while (remainingWords.length > 0) {
-                // 添加一个单词
-                currentWordPage.push(remainingWords.shift()!);
-                
-                // 创建临时内容
-                const tempContent = currentWordPage.join(' ');
-                
-                // 更新临时列表项的内容
-                tempListItem.textContent = tempContent;
-                
-                // 测量高度
-                tempSection.innerHTML = '';
-                const testList = document.createElement(isOrderedList ? 'ol' : 'ul');
-                if (isOrderedList) {
-                    testList.setAttribute('start', startIndex.toString());
-                }
-                // 应用与实际渲染一致的列表样式，确保高度测量准确
-                testList.style.fontSize = tempSection.style.fontSize;
-                testList.style.lineHeight = tempSection.style.lineHeight;
-                testList.style.marginBottom = '0.5rem';
-                testList.style.paddingLeft = '1.5rem';
-                testList.style.listStyleType = isOrderedList ? 'decimal' : 'disc';
-                testList.style.boxSizing = 'border-box';
-                testList.appendChild(tempListItem.cloneNode(true) as Element);
-                tempSection.appendChild(testList);
-                
-                if (tempSection.scrollHeight > maxHeight) {
-                    // 超出高度，移除最后添加的单词
-                    remainingWords.unshift(currentWordPage.pop()!);
-                    break;
-                }
-            }
-            
-            // 4. 如果找到可放入当前页面的单词内容
-            if (currentWordPage.length > 0) {
-                // 创建当前页面的列表项
-                const currentPageListItem = listItem.cloneNode(true) as HTMLElement;
-                currentPageListItem.textContent = currentWordPage.join(' ');
-                
-                const currentPageList = document.createElement(isOrderedList ? 'ol' : 'ul');
-                if (isOrderedList) {
-                    currentPageList.setAttribute('start', startIndex.toString());
-                }
-                currentPageList.appendChild(currentPageListItem);
-                
-                // 将当前单词内容添加到当前页面
-                currentPage.push(currentPageList);
-                
-                // 处理剩余内容
-                if (remainingWords.length > 0) {
-                    const remainingListItem = listItem.cloneNode(true) as HTMLElement;
-                    remainingListItem.textContent = remainingWords.join(' ');
-                    
-                    // 创建新页面
-                    const newPage: Element[] = [];
-                    pages.push(newPage);
-                    
-                    // 递归处理剩余内容
-                    this.handleLongListItem(remainingListItem, isOrderedList, startIndex + 1, newPage, pages, maxHeight, tempSection);
-                }
-            } else {
-                // 5. 单个单词就超过了最大高度，直接添加到当前页面
-                const tempListContainer = document.createElement(isOrderedList ? 'ol' : 'ul');
-                if (isOrderedList) {
-                    tempListContainer.setAttribute('start', startIndex.toString());
-                }
-                tempListContainer.appendChild(listItem.cloneNode(true) as Element);
-                
-                currentPage.push(tempListContainer);
-            }
-        }
-    }
-    
-    /**
-     * 处理段落分组
-     * @param group 元素分组
-     * @param currentPage 当前页面内容
-     * @param pages 所有页面
-     * @param maxHeight 最大高度
-     * @param tempSection 临时section
-     */
-    private static processParagraphGroup(group: ElementGroup, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
-        this.processGenericGroup(group, currentPage, pages, maxHeight, tempSection);
-    }
-    
-    /**
      * 处理通用分组
      * @param group 元素分组
      * @param currentPage 当前页面内容
@@ -1177,14 +596,7 @@ export class RedConverter {
      */
     private static processGenericGroup(group: ElementGroup, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
         // 检查分组是否有实际内容
-        const hasActualContent = group.elements.some(el => {
-            if (el.tagName === 'PRE') {
-                return (el.textContent?.trim() || '').length > 0;
-            }
-            // 检查是否有文本内容或包含图片
-            return (el.textContent?.trim() || '').length > 0 || 
-                   el.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image') !== null;
-        });
+        const hasActualContent = this.hasActualContent(group.elements);
         
         if (!hasActualContent) return;
         
@@ -1249,11 +661,7 @@ export class RedConverter {
             if (elementHeight > maxHeight) {
                 // 如果当前页面已经有内容，保存当前页面
                 if (currentPage.length > 0) {
-                    const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                    if (pageHasContent) {
-                        pages.push([...currentPage]);
-                    }
-                    currentPage.length = 0;
+                    this.saveCurrentPage(currentPage, pages);
                 }
                 
                 // 直接将当前元素添加到新页面
@@ -1293,11 +701,7 @@ export class RedConverter {
                 
                 // 如果当前页面已经有内容，保存当前页面
                 if (currentPage.length > 0) {
-                    const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
-                    if (pageHasContent) {
-                        pages.push([...currentPage]);
-                    }
-                    currentPage.length = 0;
+                    this.saveCurrentPage(currentPage, pages);
                 }
                 
                 // 直接将当前元素添加到新页面
@@ -1305,6 +709,498 @@ export class RedConverter {
             }
         }
     }
+
+    /**
+     * 处理单个元素分组
+     * @param group 元素分组
+     * @param currentPage 当前页面内容
+     * @param pages 所有页面
+     * @param maxHeight 最大高度
+     * @param tempSection 临时section
+     */
+    private static processSingleElementGroup(group: ElementGroup, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
+        this.processGenericGroup(group, currentPage, pages, maxHeight, tempSection);
+    }
+    
+    /**
+     * 处理列表分组
+     * @param group 元素分组
+     * @param currentPage 当前页面内容
+     * @param pages 所有页面
+     * @param maxHeight 最大高度
+     * @param tempSection 临时section
+     */
+    private static processListGroup(group: ElementGroup, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
+        // 获取完整列表元素
+        const listElement = group.elements[0];
+        if (!listElement) return;
+        
+        const isOrderedList = group.isOrderedList || listElement.tagName === 'OL';
+        const startIndex = group.startIndex || parseInt(listElement.getAttribute('start') || '1');
+        
+        // 获取所有列表项
+        const listItems = Array.from(listElement.querySelectorAll('li'));
+        
+        // 过滤掉空列表项（但保留包含图片的列表项）
+        const nonEmptyListItems = listItems.filter(item => {
+            const hasTextContent = (item.textContent?.trim() || '').length > 0;
+            const hasImage = item.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
+            return hasTextContent || hasImage;
+        });
+        
+        // 如果没有非空列表项且列表元素没有内容，跳过
+        if (nonEmptyListItems.length === 0) {
+            const hasContent = (listElement.textContent?.trim() || '').length > 0;
+            const hasImage = listElement.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
+            if (hasContent || hasImage) {
+                currentPage.push(listElement);
+            }
+            return;
+        }
+        
+        let currentListItemPage: Element[] = [];
+        let currentStartIndex = startIndex;
+        
+        // 遍历所有非空列表项，检查是否需要分页
+        for (let i = 0; i < nonEmptyListItems.length; i++) {
+            const listItem = nonEmptyListItems[i];
+            
+            // 克隆列表项以保留原始样式
+            const clonedItem = listItem!.cloneNode(true) as HTMLElement;
+            
+            // 创建临时列表容器，用于测量高度
+            const tempList = this.createStyledTempList(isOrderedList, currentStartIndex, tempSection);
+            
+            // 添加当前列表页的所有列表项（如果有）
+            currentListItemPage.forEach(item => tempList.appendChild(item.cloneNode(true) as Element));
+            // 添加当前要检查的列表项
+            tempList.appendChild(clonedItem);
+            
+            // 测量高度
+            tempSection.innerHTML = '';
+            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
+            tempSection.appendChild(tempList);
+            
+            tempSection.style.height = 'auto';
+            tempSection.style.overflow = 'visible';
+            
+            // 检查是否超出最大高度
+            if (tempSection.scrollHeight <= maxHeight) {
+                // 列表项可以放入当前页面，添加到当前列表页
+                currentListItemPage.push(listItem!);
+            } else {
+                // 当前列表项导致页面溢出
+                if (currentListItemPage.length > 0) {
+                    // 保存当前页面的列表项到新页面
+                    const pageListContainer = document.createElement(isOrderedList ? 'ol' : 'ul');
+                    if (isOrderedList) {
+                        pageListContainer.setAttribute('start', currentStartIndex.toString());
+                    }
+                    currentListItemPage.forEach(item => pageListContainer.appendChild(item.cloneNode(true) as Element));
+                    
+                    // 将当前列表页添加到当前页面
+                    currentPage.push(pageListContainer);
+                    
+                    // 保存当前页面并创建新页面
+                    const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
+                    if (pageHasContent) {
+                        pages.push([...currentPage]);
+                    }
+                    currentPage.length = 0;
+                    
+                    // 更新起始索引并重置当前列表页
+                    currentStartIndex += currentListItemPage.length;
+                    currentListItemPage = [];
+                    i--; // 重试当前列表项
+                } else {
+                    // 单个列表项非常长，需要拆分成多行
+                    // 检查当前页面是否为空
+                    if (currentPage.length > 0) {
+                        // 当前页面已有内容，创建新页面
+                    this.saveCurrentPage(currentPage, pages);
+                    }
+                    
+                    // 处理长列表项
+                    this.handleLongListItem(listItem!, isOrderedList, currentStartIndex, currentPage, pages, maxHeight, tempSection);
+                    currentStartIndex++;
+                }
+            }
+        }
+        
+        // 处理剩余的列表项
+        if (currentListItemPage.length > 0) {
+            const pageListContainer = document.createElement(isOrderedList ? 'ol' : 'ul');
+            if (isOrderedList) {
+                pageListContainer.setAttribute('start', currentStartIndex.toString());
+            }
+            currentListItemPage.forEach(item => pageListContainer.appendChild(item.cloneNode(true) as Element));
+            
+            // 检查是否能放入当前页面
+            tempSection.innerHTML = '';
+            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
+            tempSection.appendChild(pageListContainer);
+            
+            // 确保列表项不会被截断在页面底部
+            if (tempSection.scrollHeight <= maxHeight) {
+                currentPage.push(pageListContainer);
+            } else {
+                // 当前页面已满，创建新页面
+                if (currentPage.length > 0) {
+                    const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
+                    if (pageHasContent) {
+                        pages.push([...currentPage]);
+                    }
+                    currentPage.length = 0;
+                }
+                currentPage.push(pageListContainer);
+            }
+        }
+    }
+    
+    /**
+     * 处理超长列表项，将其拆分成多行
+     * @param listItem 超长列表项
+     * @param isOrderedList 是否为有序列表
+     * @param startIndex 起始索引
+     * @param currentPage 当前页面内容
+     * @param pages 所有页面
+     * @param maxHeight 最大高度
+     * @param tempSection 临时section
+     */
+    private static handleLongListItem(listItem: Element, isOrderedList: boolean, startIndex: number, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement): void {
+        const listContent = listItem.textContent || '';
+        const hasImage = listItem.querySelector('img, span.internal-embed, div.internal-embed, .markdown-image');
+        
+        // 如果列表项内容为空且没有图片，直接返回
+        if (!listContent.trim() && !hasImage) return;
+        
+        // 创建临时列表项，用于测量高度
+        const tempListItem = listItem.cloneNode(true) as HTMLElement;
+        const tempList = this.createStyledTempList(isOrderedList, startIndex, tempSection);
+        
+        // 先检查完整列表项是否能放入当前页面
+        tempSection.innerHTML = '';
+        currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
+        tempList.appendChild(tempListItem);
+        tempSection.appendChild(tempList);
+        
+        tempSection.style.height = 'auto';
+        tempSection.style.overflow = 'visible';
+        
+        if (tempSection.scrollHeight <= maxHeight) {
+            // 超长列表项能放入当前页面，直接添加
+            currentPage.push(tempList.cloneNode(true) as Element);
+            return;
+        }
+        
+        // 当前列表项无法放入当前页面，需要拆分
+        
+        // 1. 尝试按段落拆分（使用换行符分隔）
+        const paragraphs = listContent.split(/\n\s*\n/);
+        
+        const currentParagraphPage: string[] = [];
+        const remainingParagraphs: string[] = [...paragraphs];
+        
+        // 尝试找到最大可放入当前页面的段落数
+        while (remainingParagraphs.length > 0) {
+            // 添加一个段落
+            currentParagraphPage.push(remainingParagraphs.shift()!);
+            
+            // 创建临时内容
+            const tempContent = currentParagraphPage.join('\n\n');
+            
+            // 更新临时列表项的内容
+            tempListItem.textContent = tempContent;
+            
+            // 测量高度
+            tempSection.innerHTML = '';
+            const testList = this.createStyledTempList(isOrderedList, startIndex, tempSection);
+            testList.appendChild(tempListItem.cloneNode(true) as Element);
+            tempSection.appendChild(testList);
+            
+            if (tempSection.scrollHeight > maxHeight) {
+                // 超出高度，移除最后添加的段落
+                remainingParagraphs.unshift(currentParagraphPage.pop()!);
+                break;
+            }
+        }
+        
+        // 2. 如果找到可放入当前页面的段落内容
+        if (currentParagraphPage.length > 0) {
+            // 创建当前页面的列表项
+            const currentPageListItem = listItem.cloneNode(true) as HTMLElement;
+            currentPageListItem.textContent = currentParagraphPage.join('\n\n');
+            
+            const currentPageList = document.createElement(isOrderedList ? 'ol' : 'ul');
+            if (isOrderedList) {
+                currentPageList.setAttribute('start', startIndex.toString());
+            }
+            currentPageList.appendChild(currentPageListItem);
+            
+            // 将当前段落内容添加到当前页面
+            currentPage.push(currentPageList);
+            
+            // 处理剩余内容
+            if (remainingParagraphs.length > 0) {
+                const remainingListItem = listItem.cloneNode(true) as HTMLElement;
+                remainingListItem.textContent = remainingParagraphs.join('\n\n');
+                
+                // 创建新页面
+                const newPage: Element[] = [];
+                pages.push(newPage);
+                
+                // 递归处理剩余内容
+                this.handleLongListItem(remainingListItem, isOrderedList, startIndex + 1, newPage, pages, maxHeight, tempSection);
+            }
+        } else {
+            // 3. 单个段落仍然太长，尝试按单词拆分
+            const singleParagraph = listContent;
+            const words = singleParagraph.split(' ');
+            
+            const currentWordPage: string[] = [];
+            const remainingWords: string[] = [...words];
+            
+            // 尝试找到最大可放入当前页面的单词数
+            while (remainingWords.length > 0) {
+                // 添加一个单词
+                currentWordPage.push(remainingWords.shift()!);
+                
+                // 创建临时内容
+                const tempContent = currentWordPage.join(' ');
+                
+                // 更新临时列表项的内容
+                tempListItem.textContent = tempContent;
+                
+                // 测量高度
+                tempSection.innerHTML = '';
+                const testList = this.createStyledTempList(isOrderedList, startIndex, tempSection);
+                testList.appendChild(tempListItem.cloneNode(true) as Element);
+                tempSection.appendChild(testList);
+                
+                if (tempSection.scrollHeight > maxHeight) {
+                    // 超出高度，移除最后添加的单词
+                    remainingWords.unshift(currentWordPage.pop()!);
+                    break;
+                }
+            }
+            
+            // 4. 如果找到可放入当前页面的单词内容
+            if (currentWordPage.length > 0) {
+                // 创建当前页面的列表项
+                const currentPageListItem = listItem.cloneNode(true) as HTMLElement;
+                currentPageListItem.textContent = currentWordPage.join(' ');
+                
+                const currentPageList = document.createElement(isOrderedList ? 'ol' : 'ul');
+                if (isOrderedList) {
+                    currentPageList.setAttribute('start', startIndex.toString());
+                }
+                currentPageList.appendChild(currentPageListItem);
+                
+                // 将当前单词内容添加到当前页面
+                currentPage.push(currentPageList);
+                
+                // 处理剩余内容
+                if (remainingWords.length > 0) {
+                    const remainingListItem = listItem.cloneNode(true) as HTMLElement;
+                    remainingListItem.textContent = remainingWords.join(' ');
+                    
+                    // 创建新页面
+                    const newPage: Element[] = [];
+                    pages.push(newPage);
+                    
+                    // 递归处理剩余内容
+                    this.handleLongListItem(remainingListItem, isOrderedList, startIndex + 1, newPage, pages, maxHeight, tempSection);
+                }
+            } else {
+                // 5. 单个单词就超过了最大高度，直接添加到当前页面
+                const tempListContainer = document.createElement(isOrderedList ? 'ol' : 'ul');
+                if (isOrderedList) {
+                    tempListContainer.setAttribute('start', startIndex.toString());
+                }
+                tempListContainer.appendChild(listItem.cloneNode(true) as Element);
+                
+                currentPage.push(tempListContainer);
+            }
+        }
+    }
+    
+    /**
+     * 处理代码块分组
+     * @param group 元素分组
+     * @param currentPage 当前页面内容
+     * @param pages 所有页面
+     * @param maxHeight 最大高度
+     * @param tempSection 临时section
+     */
+    private static processCodeBlockGroup(group: ElementGroup, currentPage: Element[], pages: Element[][], maxHeight: number, tempSection: HTMLElement) {
+        const codeBlock = group.elements[0];
+        
+        // 如果不是PRE元素，使用通用处理
+        if (codeBlock!.tagName !== 'PRE') {
+            this.processGenericGroup(group, currentPage, pages, maxHeight, tempSection);
+            return;
+        }
+        
+        // 获取代码内容和语法高亮类
+        const codeContent = codeBlock!.textContent || '';
+        
+        // 检查代码块是否有实际内容
+        if (!codeContent.trim()) {
+            return; // 跳过空代码块
+        }
+        
+        const codeElement = codeBlock!.querySelector('code');
+        const langClass = codeElement?.className || '';
+        
+        // 按行分割代码并过滤空行
+        const codeLines = codeContent.split('\n').filter(line => line.trim().length > 0);
+        
+        // 如果代码只有一行或空行，直接处理
+        if (codeLines.length <= 1) {
+            const clonedBlock = codeBlock!.cloneNode(true) as Element;
+            if (clonedBlock.tagName === 'PRE') {
+                clonedBlock.classList.add('red-pre');
+            }
+            
+            tempSection.innerHTML = '';
+            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
+            tempSection.appendChild(clonedBlock);
+            
+            tempSection.style.height = 'auto';
+            tempSection.style.overflow = 'visible';
+            
+            if (tempSection.scrollHeight <= maxHeight) {
+                currentPage.push(codeBlock!);
+            } else {
+                this.saveCurrentPage(currentPage, pages);
+                tempSection.innerHTML = '';
+                currentPage.push(codeBlock!);
+            }
+            return;
+        }
+        
+        let currentCodePage: string[] = [];
+        
+        // 遍历所有代码行，逐行分页
+        for (let i = 0; i < codeLines.length; i++) {
+            const line = codeLines[i];
+            const testLines = [...currentCodePage, line];
+            
+            // 创建临时代码块
+            const tempPre = document.createElement('pre');
+            tempPre.className = `red-pre ${codeBlock!.className}`;
+            const tempCode = document.createElement('code');
+            tempCode.className = langClass;
+            tempCode.textContent = testLines.join('\n');
+            tempPre.appendChild(tempCode);
+            
+            // 测量高度
+            tempSection.innerHTML = '';
+            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
+            tempSection.appendChild(tempPre);
+            
+            tempSection.style.height = 'auto';
+            tempSection.style.overflow = 'visible';
+            
+            if (tempSection.scrollHeight <= maxHeight) {
+                // 可以添加到当前代码页
+                currentCodePage.push(line!);
+            } else {
+                // 需要分页
+                if (currentCodePage.length > 0) {
+                    // 创建当前页面的代码块
+                    const pagePre = document.createElement('pre');
+                    pagePre.className = `red-pre ${codeBlock!.className}`;
+                    const pageCode = document.createElement('code');
+                    pageCode.className = langClass;
+                    pageCode.textContent = currentCodePage.join('\n');
+                    pagePre.appendChild(pageCode);
+                    
+                    // 检查当前页面是否有空间
+                    tempSection.innerHTML = '';
+                    currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
+                    tempSection.appendChild(pagePre);
+                    
+                    tempSection.style.height = 'auto';
+                    tempSection.style.overflow = 'visible';
+                    
+                    if (tempSection.scrollHeight <= maxHeight) {
+                        currentPage.push(pagePre);
+                    } else {
+                        // 当前页面已满，保存并创建新页面
+                        this.saveCurrentPage(currentPage, pages);
+                        currentPage.push(pagePre);
+                    }
+                    
+                    // 重置当前代码页，从当前行开始新页面
+                    currentCodePage = [line!];
+                } else {
+                    // 单行代码就超过了最大高度，单独占一页
+                    const singleLinePre = document.createElement('pre');
+                    singleLinePre.className = `red-pre ${codeBlock!.className}`;
+                    const singleLineCode = document.createElement('code');
+                    singleLineCode.className = langClass;
+                    singleLineCode.textContent = line!;
+                    singleLinePre.appendChild(singleLineCode);
+                    
+                    // 检查当前页面是否有空间
+                    tempSection.innerHTML = '';
+                    currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
+                    tempSection.appendChild(singleLinePre);
+                    
+                    tempSection.style.height = 'auto';
+                    tempSection.style.overflow = 'visible';
+                    
+                    if (tempSection.scrollHeight <= maxHeight) {
+                        // 当前页面还有空间，直接添加
+                        currentPage.push(singleLinePre);
+                    } else {
+                        // 当前页面已满，保存并创建新页面
+                        this.saveCurrentPage(currentPage, pages);
+                        currentPage.push(singleLinePre);
+                    }
+                }
+            }
+        }
+        
+        // 处理剩余的代码行，确保只包含实际内容
+        const nonEmptyCodePage = currentCodePage.filter(line => line.trim().length > 0);
+        if (nonEmptyCodePage.length > 0) {
+            // 创建剩余代码的代码块
+            const pagePre = document.createElement('pre');
+            pagePre.className = `red-pre ${codeBlock!.className}`;
+            const pageCode = document.createElement('code');
+            pageCode.className = langClass;
+            pageCode.textContent = nonEmptyCodePage.join('\n');
+            pagePre.appendChild(pageCode);
+            
+            // 检查当前页面是否有空间
+            tempSection.innerHTML = '';
+            currentPage.forEach(el => tempSection.appendChild(el.cloneNode(true) as Element));
+            tempSection.appendChild(pagePre);
+            
+            tempSection.style.height = 'auto';
+            tempSection.style.overflow = 'visible';
+            
+            if (tempSection.scrollHeight <= maxHeight) {
+                currentPage.push(pagePre);
+            } else {
+                // 当前页面已满，保存并创建新页面
+                if (currentPage.length > 0) {
+                    const pageHasContent = currentPage.some(el => (el.textContent?.trim() || '').length > 0);
+                    if (pageHasContent) {
+                        pages.push([...currentPage]);
+                    }
+                    currentPage.length = 0;
+                }
+                currentPage.push(pagePre);
+            }
+        }
+    }
+    
+    
+    
+
     
     private static processElements(container: HTMLElement | null): void {
         if (!container) return;
