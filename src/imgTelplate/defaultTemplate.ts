@@ -74,7 +74,6 @@ export class DefaultTemplate implements ImgTemplate {
         });
         // 设置样式：小字体，不抢眼，左对齐
         pageNumber.style.fontSize = '12px';
-        pageNumber.style.color = 'rgb(232 232 232)';
         pageNumber.style.marginTop = '8px';
         pageNumber.style.textAlign = 'left';
         pageNumber.style.paddingLeft = '10px';

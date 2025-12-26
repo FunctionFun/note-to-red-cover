@@ -66,8 +66,8 @@ ${content}`;
 	// 添加共用的导出配置方法
 	private getExportConfig() {
 		return {
-			width: 400,
-			height: 600,
+			width: 540,
+			height: 720,
 			scale: 2,
 			skipFonts: false,
 			imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="

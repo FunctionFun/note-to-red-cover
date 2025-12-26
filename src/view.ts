@@ -316,8 +316,8 @@ export class RedView extends ItemView {
         // 为每个图片预览区域应用缩放
         imagePreviews.forEach((imagePreview: Element) => {
             const previewElement = imagePreview as HTMLElement;
-            // 图片的原始宽度是400px
-            const originalWidth = 400;
+            // 图片的原始宽度是540px
+            const originalWidth = 540;
             // 计算缩放比例，不超过1倍（不放大，只缩小）
             // 确保缩放比例至少为0.5，避免太小的预览效果
             const scaleFactor = Math.max(0.5, Math.min(1, containerWidth / (originalWidth + 20)));
@@ -329,9 +329,9 @@ export class RedView extends ItemView {
             previewElement.style.transform = `scale(${scaleFactor})`;
             previewElement.style.transformOrigin = 'top center';
             
-            // 确保图片保持2:3的比例 (400x600)
+            // 确保图片保持3:4的比例 (540x720)
             previewElement.style.width = `${originalWidth}px`;
-            previewElement.style.height = `${originalWidth * 1.5}px`; // 计算高度以保持400x600比例
+            previewElement.style.height = `${originalWidth * (720/540)}px`; // 计算高度以保持540x720比例
         });
     }
     // #endregion

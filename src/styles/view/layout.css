@@ -24,16 +24,15 @@
     background: var(--background-primary); 
     border-radius: 12px;
     padding: 10px 0;
-    max-height: 680px;
+    max-height: 780px;
 }
 .red-preview-header{
     padding-bottom: 10px;
 }
 /* 图片预览区域 */
 .red-image-preview {
-    width: 400px;
-    height: 600px;
-    border-radius: 8px;
+    width: 540px;
+    height: 720px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     padding: 10px;
     position: relative;
@@ -127,7 +126,7 @@
 
 /* 页码样式 */
 .red-page-number {
-    color: rgb(232 232 232);
+    color: var(--code-background);
 }
 
 .red-footer-left {

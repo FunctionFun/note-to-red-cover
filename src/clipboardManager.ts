@@ -3,9 +3,9 @@ import * as htmlToImage from 'html-to-image';
 export class ClipboardManager {
     private static getExportConfig(_imageElement: HTMLElement) {
         // 直接使用元素的CSS尺寸，而不是getBoundingClientRect()获取的显示尺寸
-        // 确保导出尺寸严格为400x600
-        const width = 400;
-        const height = 600;
+        // 确保导出尺寸严格为540x720
+        const width = 540;
+        const height = 720;
         
         return {
             quality: 1,

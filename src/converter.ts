@@ -63,8 +63,8 @@ export class RedConverter {
             const imagePreview = document.createElement('div');
             imagePreview.className = 'red-image-preview';
             // 使用固定的400px宽度和600px高度
-            imagePreview.style.width = '400px';
-            imagePreview.style.height = '600px';
+            imagePreview.style.width = '540px';
+            imagePreview.style.height = '720px';
             imagePreview.style.backgroundColor = 'var(--background-primary)';
             // 设置默认transform和transform-origin值
             imagePreview.style.transform = 'scale(0.7)';
@@ -108,8 +108,8 @@ export class RedConverter {
         const imagePreview = document.createElement('div');
         imagePreview.className = 'red-image-preview';
         // 使用固定的400px宽度和600px高度
-        imagePreview.style.width = '400px';
-        imagePreview.style.height = '600px';
+        imagePreview.style.width = '540px';
+        imagePreview.style.height = '720px';
         // 设置默认背景色，确保即使没有内容也能看到预览区域
         imagePreview.style.backgroundColor = 'var(--background-primary)';
         imagePreview.style.position = 'relative';
@@ -150,8 +150,8 @@ export class RedConverter {
         const contentContainer = document.createElement('div');
         contentContainer.className = 'red-content-container';
         
-        // 使用固定的400px宽度来计算内容分割
-        const containerWidth = 400;
+        // 使用固定的540px宽度来计算内容分割
+        const containerWidth = 540;
         
         // 处理整个内容，不按标题分割
         const section = await this.createContentSection(element, containerWidth, currentFilePath);
@@ -267,7 +267,7 @@ export class RedConverter {
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
         tempContainer.style.width = `${containerWidth}px`; // 使用传入的容器宽度
-        tempContainer.style.height = `${containerWidth * 1.5}px`; // 固定2:3比例高度
+        tempContainer.style.height = `${containerWidth * (720/540)}px`; // 固定3:4比例高度 (540x720)
         tempContainer.style.display = 'flex';
         tempContainer.style.flexDirection = 'column';
         tempContainer.style.transform = 'scale(1)';
@@ -344,8 +344,8 @@ export class RedConverter {
         tempFooterArea.style.minHeight = '20px';
         tempContainer.appendChild(tempFooterArea);
         
-        // 使用与实际预览区域一致的2:3宽高比
-        const tempContainerHeight = containerWidth * 1.5;
+        // 使用与实际预览区域一致的3:4宽高比 (540x720)
+        const tempContainerHeight = containerWidth * (720/540);
         // 减去header、footer和tempSection的边距，确保准确的可用内容高度
         // 根据实际情况，页脚高度默认为50px
         const availableHeight = tempContainerHeight - 20 - 50;
