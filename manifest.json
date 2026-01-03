@@ -1,7 +1,7 @@
 {
 	"id": "note-to-red-cover",
 	"name": "Note To Red Cover",
-	"version": "1.0.0",
+	"version": "1.2.0",
 	"minAppVersion": "0.15.0",
 	"description": "将Obsidian笔记导出为小红书封面图片",
 	"author": "FunctionFun",

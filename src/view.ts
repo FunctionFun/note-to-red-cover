@@ -361,6 +361,8 @@ export class RedView extends ItemView {
         this.customFontSelect.querySelector('.red-select')?.addEventListener('change', async (e: any) => {
             const value = e.detail.value;
             await this.settingsManager.updateSettings({ fontFamily: value });
+            // 立即更新预览中的字体样式
+            this.updateFontStyles();
         });
     }
 
@@ -375,7 +377,7 @@ export class RedView extends ItemView {
         this.fontSizeSelect = fontSizeGroup.createEl('input', {
             cls: 'red-font-size-input',
             type: 'text',
-            value: this.settingsManager.getSettings().fontSize.toString(),
+            value: (this.settingsManager.getSettings().fontSize || 16).toString(),
             attr: {
                 style: 'border: none; outline: none; background: transparent;'
             }
@@ -389,6 +391,8 @@ export class RedView extends ItemView {
         const updateFontSize = async () => {
             const size = parseInt(this.fontSizeSelect.value);
             await this.settingsManager.updateSettings({ fontSize: size });
+            // 立即更新预览中的字体样式
+            this.updateFontStyles();
         };
 
         decreaseButton.addEventListener('click', () => {
@@ -645,9 +649,36 @@ export class RedView extends ItemView {
                     previewElement.style.fontSize = `${settings.fontSize}px`;
                 }
                 
+                // 应用字体家族设置到.red-image-preview元素
+                if (settings.fontFamily) {
+                    previewElement.style.fontFamily = settings.fontFamily;
+                }
+                
                 // 应用背景样式
                 if (settings.backgroundSettings && settings.backgroundSettings.imageUrl) {
                     this.backgroundManager.applyBackgroundStyles(previewElement, settings.backgroundSettings);
+                }
+                
+                // 应用主题设置 - 使用自定义 CSS
+                const selectedTheme = settings.themes.find(t => t.id === settings.selectedThemeId);
+                if (selectedTheme && selectedTheme.cssCode) {
+                    // 移除之前添加的自定义样式
+                    const existingStyle = previewElement.querySelector('.red-custom-theme-style');
+                    if (existingStyle) {
+                        existingStyle.remove();
+                    }
+                    // 添加新的自定义样式
+                    const styleElement = document.createElement('style');
+                    styleElement.className = 'red-custom-theme-style';
+                    styleElement.textContent = selectedTheme.cssCode;
+                    previewElement.appendChild(styleElement);
+                }
+                // 如果没有选中主题或CSS代码为空，移除已存在的自定义样式
+                else {
+                    const existingStyle = previewElement.querySelector('.red-custom-theme-style');
+                    if (existingStyle) {
+                        existingStyle.remove();
+                    }
                 }
             });
             
@@ -679,6 +710,66 @@ export class RedView extends ItemView {
         const singleDownloadButton = this.containerEl.querySelector('.red-export-button');
         if (singleDownloadButton) {
             (singleDownloadButton as HTMLButtonElement).disabled = !enabled;
+        }
+    }
+
+    private updateFontStyles() {
+        const settings = this.settingsManager.getSettings();
+        const imagePreviews = this.previewEl.querySelectorAll('.red-image-preview');
+        
+        imagePreviews.forEach((imagePreview: Element) => {
+            const previewElement = imagePreview as HTMLElement;
+            
+            // 应用字体大小设置
+            if (settings.fontSize) {
+                previewElement.style.fontSize = `${settings.fontSize}px`;
+            }
+            
+            // 应用字体家族设置
+            if (settings.fontFamily) {
+                previewElement.style.fontFamily = settings.fontFamily;
+                
+                // 监听字体加载状态
+                this.checkFontLoad(settings.fontFamily, previewElement);
+            } else {
+                // 如果没有选择字体，移除字体家族设置，使用系统默认
+                previewElement.style.fontFamily = '';
+            }
+        });
+    }
+    
+    private checkFontLoad(fontFamily: string, element: HTMLElement) {
+        // 使用 document.fonts API 检查字体是否加载成功
+        if ('fonts' in document) {
+            document.fonts.load(`16px "${fontFamily}"`)
+                .then(() => {
+                    // 字体加载成功，移除任何错误提示
+                    const errorHint = element.querySelector('.red-font-load-error');
+                    if (errorHint) {
+                        errorHint.remove();
+                    }
+                })
+                .catch(() => {
+                    // 字体加载失败，显示友好提示
+                    this.showFontLoadError(element, fontFamily);
+                });
+        }
+    }
+    
+    private showFontLoadError(element: HTMLElement, fontFamily: string) {
+        // 检查是否已存在错误提示
+        let errorHint = element.querySelector('.red-font-load-error');
+        
+        if (!errorHint) {
+            errorHint = element.createEl('div', {
+                cls: 'red-font-load-error',
+                text: `字体 "${fontFamily}" 未找到，已使用系统默认字体`
+            });
+            
+            // 3秒后自动隐藏错误提示
+            setTimeout(() => {
+                errorHint?.remove();
+            }, 3000);
         }
     }
     // #endregion

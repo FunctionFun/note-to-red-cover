@@ -329,11 +329,11 @@ export class RedConverter {
         `;
         tempContainer.appendChild(elementStyle);
         // 使用用户设置的字体大小进行测量，确保分页逻辑与实际渲染一致
-        tempContainer.style.fontSize = `${settings.fontSize}px`;
-        tempSection.style.fontSize = `${settings.fontSize}px`;
+        tempContainer.style.fontSize = `${settings.fontSize || 16}px`;
+        tempSection.style.fontSize = `${settings.fontSize || 16}px`;
         // 行高设置为字体大小的1.5倍，确保与实际渲染一致
-        tempSection.style.lineHeight = `${settings.fontSize * 1.5}px`;
-        
+        tempSection.style.lineHeight = `${(settings.fontSize || 16) * 1.5}px`;
+
         tempContentContainer.appendChild(tempSection);
         tempContentArea.appendChild(tempContentContainer);
         tempContainer.appendChild(tempContentArea);
@@ -392,15 +392,15 @@ export class RedConverter {
             // 应用用户配置的字体设置到最终渲染的内容
             if (settings) {
                 // 为整个section容器设置基础字体大小，这样CSS中的rem单位会基于此计算
-                section.style.fontSize = `${settings.fontSize}px`;
+                section.style.fontSize = `${settings.fontSize || 16}px`;
                 
                 // 为整个section容器设置字体族
-                section.style.fontFamily = settings.fontFamily;
+                section.style.fontFamily = settings.fontFamily || '';
                 
                 // 为代码块单独设置字体族，确保代码使用等宽字体
                 const codeBlocks = section.querySelectorAll('pre, code');
                 codeBlocks.forEach(el => {
-                    (el as HTMLElement).style.fontFamily = settings.fontFamily;
+                    (el as HTMLElement).style.fontFamily = settings.fontFamily || '';
                 });
             }
             

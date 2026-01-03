@@ -4,20 +4,39 @@ export class BackgroundManager {
     constructor() {}
 
     public applyBackgroundStyles(element: HTMLElement, settings: BackgroundSettings) {
-        // 确保背景尺寸不会为0
-        const scale = Math.max(settings.scale, 0.1); // 确保缩放在合理范围内
+        const scale = Math.max(settings.scale, 0.1);
         
-        element.style.backgroundImage = `url(${settings.imageUrl})`;
-        element.style.backgroundSize = `${scale * 100}% ${scale * 100}%`;
-        element.style.backgroundPosition = `${settings.position.x}px ${settings.position.y}px`;
-        element.style.backgroundRepeat = 'no-repeat';
+        let backgroundLayer = element.querySelector('.red-background-layer') as HTMLElement;
+        
+        if (!backgroundLayer) {
+            backgroundLayer = document.createElement('div');
+            backgroundLayer.className = 'red-background-layer';
+            backgroundLayer.style.position = 'absolute';
+            backgroundLayer.style.top = '0';
+            backgroundLayer.style.left = '0';
+            backgroundLayer.style.width = '100%';
+            backgroundLayer.style.height = '100%';
+            backgroundLayer.style.zIndex = '0';
+            backgroundLayer.style.pointerEvents = 'none';
+            
+            element.insertBefore(backgroundLayer, element.firstChild);
+        }
+        
+        backgroundLayer.style.backgroundImage = `url(${settings.imageUrl})`;
+        backgroundLayer.style.backgroundSize = `${scale * 100}% ${scale * 100}%`;
+        backgroundLayer.style.backgroundPosition = `${settings.position.x}px ${settings.position.y}px`;
+        backgroundLayer.style.backgroundRepeat = settings.backgroundRepeat || 'no-repeat';
+        
+        if (settings.opacity !== undefined) {
+            const clampedOpacity = Math.max(0, Math.min(1, settings.opacity));
+            backgroundLayer.style.opacity = clampedOpacity.toString();
+        }
     }
 
     public clearBackgroundStyles(element: HTMLElement) {
-        // 直接清除背景相关样式，避免影响其他样式
-        element.style.backgroundImage = '';
-        element.style.backgroundSize = '';
-        element.style.backgroundPosition = '';
-        element.style.backgroundRepeat = '';
+        const backgroundLayer = element.querySelector('.red-background-layer') as HTMLElement;
+        if (backgroundLayer) {
+            backgroundLayer.remove();
+        }
     }
 }

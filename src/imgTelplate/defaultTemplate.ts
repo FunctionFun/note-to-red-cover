@@ -68,9 +68,17 @@ export class DefaultTemplate implements ImgTemplate {
     private createPageNumberSection(parent: HTMLElement, currentPage: number, totalPages: number, settings: any) {
         // 获取文件名，如果没有则显示默认文本
         const fileName = settings.currentFileName || '未命名文件';
+        
+        // 获取当前日期并格式化为 YYYY-MM-DD
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const exportDate = `${year}-${month}-${day}`;
+        
         const pageNumber = parent.createEl('div', {
             cls: 'red-page-number',
-            text: `[${fileName} ${currentPage + 1}/${totalPages}]`
+            text: `[${fileName} ${currentPage + 1}/${totalPages}] ${exportDate}`
         });
         // 设置样式：小字体，不抢眼，左对齐
         pageNumber.style.fontSize = '12px';
@@ -85,32 +93,49 @@ export class DefaultTemplate implements ImgTemplate {
 
         // 左边显示作者名/作者账号
         const leftSection = footerArea.createEl('div', { cls: 'red-footer-left' });
-        this.createFooterLeftSection(leftSection, settings);
+        const hasAuthorInfo = this.createFooterLeftSection(leftSection, settings);
         
-        footerArea.createEl('div', {
-            cls: 'red-footer-separator',
-            text: '|'
-        });
+        // 只有在有作者信息时才显示分割线
+        if (hasAuthorInfo) {
+            footerArea.createEl('div', {
+                cls: 'red-footer-separator',
+                text: '|'
+            });
+        }
 
         // 右边显示自定义签名
-        this.createFooterText(footerArea, settings.xhsBio);
+        this.createFooterText(footerArea, settings.xhsBio || '');
     }
 
-    private createFooterLeftSection(parent: HTMLElement, settings: any): void {
+    private createFooterLeftSection(parent: HTMLElement, settings: any): boolean {
         // 添加作者名和作者账号
         const authorInfo = parent.createEl('div', { cls: 'red-footer-author-info' });
         
-        authorInfo.createEl('span', {
-            cls: 'red-footer-author-name',
-            text: settings.xhsNickname || '未设置'
-        });
+        let hasVisibleElement = false;
         
-        authorInfo.createEl('span', { text: ' ' });
+        // 如果有小红书昵称，显示昵称
+        if (settings.author) {
+            authorInfo.createEl('span', {
+                cls: 'red-footer-author-name',
+                text: settings.author
+            });
+            hasVisibleElement = true;
+        }
         
-        authorInfo.createEl('span', {
-            cls: 'red-footer-author-id',
-            text: settings.xhsAccount || ''
-        });
+        // 如果有小红书账号，显示账号
+        if (settings.xhsAccount) {
+            // 如果昵称也存在，添加空格分隔
+            if (settings.author) {
+                authorInfo.createEl('span', { text: ' ' });
+            }
+            authorInfo.createEl('span', {
+                cls: 'red-footer-author-id',
+                text: settings.xhsAccount.startsWith('@') ? settings.xhsAccount : `@${settings.xhsAccount}`
+            });
+            hasVisibleElement = true;
+        }
+        
+        return hasVisibleElement;
     }
 
     private createFooterText(parent: HTMLElement, text: string): HTMLElement {

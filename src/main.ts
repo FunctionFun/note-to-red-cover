@@ -2,7 +2,7 @@ import { Plugin, WorkspaceLeaf } from 'obsidian';
 import { RedView, VIEW_TYPE_RED } from './view';
 import { SettingsManager } from './settings/settings';
 import { RedConverter } from './converter';
-import { RedSettingTab } from './settings/SettingTab';
+import { SettingTab } from './settings/SettingTab';
 
 export default class RedPlugin extends Plugin {
   settingsManager: SettingsManager;
@@ -10,7 +10,7 @@ export default class RedPlugin extends Plugin {
   async onload() {
     // 初始化设置管理器
     this.settingsManager = new SettingsManager(this);
-    await this.settingsManager.loadSettings();
+    await this.settingsManager.initialize();
 
     // 初始化转换器
     RedConverter.initialize(this.app, this);
@@ -36,7 +36,7 @@ export default class RedPlugin extends Plugin {
     });
 
     // 在插件的 onload 方法中添加：
-    this.addSettingTab(new RedSettingTab(this.app, this));
+    this.addSettingTab(new SettingTab(this.app, this));
   }
 
   async activateView() {

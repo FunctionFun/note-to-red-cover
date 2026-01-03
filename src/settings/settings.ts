@@ -1,139 +1,295 @@
-import RedPlugin from '../main';
-import { EventEmitter } from 'events';
+import RedPlugin from "../main";
+
+export interface Theme {
+    id: string;
+    name: string;
+    cssCode: string;
+}
+
+export interface CustomFont {
+    id?: string;
+    label: string;
+    value: string;
+    isPreset?: boolean;
+}
+
+export interface BackgroundSettings {
+    imageUrl: string;
+    scale: number;
+    position: { x: number; y: number };
+    opacity?: number;
+    blur?: number;
+    backgroundRepeat?: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y';
+}
+
+export const PRESET_FONTS: CustomFont[] = [
+    {
+        label: '苹方',
+        value: 'PingFang SC',
+        isPreset: true
+    },
+    {
+        label: '微软雅黑',
+        value: 'Microsoft YaHei',
+        isPreset: true
+    },
+    {
+        label: '霞鹜文楷',
+        value: 'LXGW WenKai',
+        isPreset: true
+    },
+    {
+        label: '思源黑体',
+        value: 'Source Han Sans CN',
+        isPreset: true
+    },
+    {
+        label: '思源宋体',
+        value: 'Source Han Serif SC',
+        isPreset: true
+    }
+];
 
 export interface RedSettings {
-    templateId: string;
-    fontFamily: string;
-    fontSize: number;
-    showFooter?: boolean;
+    selectedThemeId: string;
+    themes: Theme[];
     useHorizontalRuleSplit: boolean;
-    customFonts: { value: string; label: string; isPreset?: boolean }[];
-    watermarkSettings: {
-        enabled: boolean;
-        watermarkText: string;
-        watermarkImage: string;
-        opacity: number;
-        count: number;
-        watermarkColor: string;
+    showFooter: boolean;
+    showWatermark: boolean;
+    watermarkSize: number;
+    author: string;
+    xhsAccount?: string;
+    customFonts: CustomFont[];
+    fontSize?: number;
+    backgroundSettings?: BackgroundSettings;
+    watermarkSettings?: any;
+    fontFamily?: string;
+    xhsBio?: string;
+    collapsedSections?: {
+        [key: string]: boolean;
     };
-    backgroundId: string;
-    backgroundSettings: {
-        imageUrl: string;
-        scale: number;
-        position: { x: number; y: number };
-    };
-    xhsNickname: string;
-    xhsAccount: string;
-    xhsBio: string;
 }
 
-export const DEFAULT_SETTINGS: RedSettings = {
-    templateId: 'default',
-    fontFamily: 'Optima-Regular, Optima, PingFangSC-light, PingFangTC-light, "PingFang SC"',
-    fontSize: 16,
-    useHorizontalRuleSplit: true,
-    xhsNickname: '作者名称',
-    xhsAccount: '@作者账号',
-    xhsBio: '个人简介',
-    customFonts: [
-        {
-            value: 'Optima-Regular, Optima, PingFangSC-light, PingFangTC-light, "PingFang SC", Cambria, Cochin, Georgia, Times, "Times New Roman", serif',
-            label: '默认字体',
-            isPreset: true
-        },
-        {
-            value: 'SimSun, "宋体", serif',
-            label: '宋体',
-            isPreset: true
-        },
-        {
-            value: 'SimHei, "黑体", sans-serif',
-            label: '黑体',
-            isPreset: true
-        },
-        {
-            value: 'KaiTi, "楷体", serif',
-            label: '楷体',
-            isPreset: true
-        },
-        {
-            value: '"Microsoft YaHei", "微软雅黑", sans-serif',
-            label: '雅黑',
-            isPreset: true
-        }
+export const DEFAULT_SETTINGS: Partial<RedSettings> = {
+    selectedThemeId: "default",
+    themes: [
+        { id: "default", name: "默认主题", cssCode: "" }
     ],
-    watermarkSettings: {
-        enabled: false,
-        watermarkText: '小红书笔记',
-        watermarkImage: '',
-        opacity: 0.2,
-        count: 2,
-        watermarkColor: '#ebebeb'
-    },
-    backgroundId: '',
-    backgroundSettings: { imageUrl: '', scale: 1, position: { x: 0, y: 0 } }
-}
+    useHorizontalRuleSplit: false,
+    showFooter: true,
+    showWatermark: false,
+    watermarkSize: 30,
+    author: "FunctionFun",
+    xhsAccount: "functionfun",
+    customFonts: [],
+    fontSize: 16,
+    backgroundSettings: { imageUrl: "", scale: 1, position: { x: 0, y: 0 }, backgroundRepeat: "no-repeat", opacity: 0.8 },
+    watermarkSettings: {},
+    fontFamily: "",
+    xhsBio: "设计·编程·游戏·学习",
+    collapsedSections: {
+        author: true,
+        theme: true,
+        typography: true,
+        watermark: true,
+        background: true
+    }
+};
 
-export class SettingsManager extends EventEmitter {
+export class SettingsManager {
     private plugin: RedPlugin;
-    private settings: RedSettings;
+    settings: RedSettings;
+    private eventListeners: Map<string, Set<Function>> = new Map();
 
     constructor(plugin: RedPlugin) {
-        super();
         this.plugin = plugin;
-        this.settings = DEFAULT_SETTINGS;
+        this.settings = this.buildDefaultSettings();
     }
 
-    async loadSettings() {
-        let savedData = await this.plugin.loadData();
-
-        // 确保 savedData 是一个对象
-        if (!savedData) {
-            savedData = {};
-        }
-    
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
+    private buildDefaultSettings(): RedSettings {
+        const defaultSettings: RedSettings = {
+            ...DEFAULT_SETTINGS,
+            useHorizontalRuleSplit: DEFAULT_SETTINGS.useHorizontalRuleSplit || false,
+            showFooter: DEFAULT_SETTINGS.showFooter || false,
+            showWatermark: DEFAULT_SETTINGS.showWatermark || false,
+            watermarkSize: DEFAULT_SETTINGS.watermarkSize || 30,
+            author: DEFAULT_SETTINGS.author || "",
+            customFonts: DEFAULT_SETTINGS.customFonts || [],
+            selectedThemeId: DEFAULT_SETTINGS.selectedThemeId || "default",
+            themes: DEFAULT_SETTINGS.themes || [
+                { id: "default", name: "默认主题", cssCode: "" }
+            ],
+            fontSize: DEFAULT_SETTINGS.fontSize || 16,
+            backgroundSettings: DEFAULT_SETTINGS.backgroundSettings || { imageUrl: "", scale: 1, position: { x: 0, y: 0 }, backgroundRepeat: "no-repeat", opacity: 0.8 },
+            watermarkSettings: DEFAULT_SETTINGS.watermarkSettings || {},
+            fontFamily: DEFAULT_SETTINGS.fontFamily || "",
+            xhsBio: DEFAULT_SETTINGS.xhsBio || "",
+            collapsedSections: DEFAULT_SETTINGS.collapsedSections || {
+                author: true,
+                theme: true,
+                typography: true,
+                watermark: true,
+                background: true
+            }
+        } as RedSettings;
+        return defaultSettings;
     }
 
-    async saveSettings() {
+    async initialize(): Promise<void> {
+        this.settings = Object.assign(
+            this.buildDefaultSettings(),
+            await this.plugin.loadData()
+        );
+    }
+
+    async save(): Promise<void> {
         await this.plugin.saveData(this.settings);
+        this.emit('settings-updated');
+    }
+
+    on(event: string, callback: Function): void {
+        if (!this.eventListeners.has(event)) {
+            this.eventListeners.set(event, new Set());
+        }
+        this.eventListeners.get(event)!.add(callback);
+    }
+
+    off(event: string, callback: Function): void {
+        const listeners = this.eventListeners.get(event);
+        if (listeners) {
+            listeners.delete(callback);
+        }
+    }
+
+    private emit(event: string): void {
+        const listeners = this.eventListeners.get(event);
+        if (listeners) {
+            listeners.forEach(callback => callback());
+        }
     }
 
     getSettings(): RedSettings {
         return this.settings;
     }
 
-    async updateSettings(settings: Partial<RedSettings>) {
-        this.settings = { ...this.settings, ...settings };
-        await this.saveSettings();
-        this.emit('settings-updated');
+    async updateSettings(updates: Partial<RedSettings>): Promise<void> {
+        this.settings = Object.assign({}, this.settings, updates);
+        await this.save();
     }
 
-    getFontOptions() {
-        return this.settings.customFonts;
+    async setShowWatermark(value: boolean): Promise<void> {
+        this.settings.showWatermark = value;
+        await this.save();
     }
 
-    async addCustomFont(font: { value: string; label: string }) {
-        this.settings.customFonts.push({ ...font, isPreset: false });
-        await this.saveSettings();
+    async setWatermarkSize(value: number): Promise<void> {
+        this.settings.watermarkSize = value;
+        await this.save();
     }
 
-    async removeFont(value: string) {
-        const font = this.settings.customFonts.find(f => f.value === value);
-        if (font && !font.isPreset) {
-            this.settings.customFonts = this.settings.customFonts.filter(f => f.value !== value);
-            await this.saveSettings();
+    async setAuthor(value: string): Promise<void> {
+        this.settings.author = value;
+        await this.save();
+    }
+
+    async setFontSize(value: number): Promise<void> {
+        this.settings.fontSize = value;
+        await this.save();
+    }
+
+    async setFontFamily(value: string): Promise<void> {
+        this.settings.fontFamily = value;
+        await this.save();
+    }
+
+    getFonts(): CustomFont[] {
+        return PRESET_FONTS.concat(this.settings.customFonts);
+    }
+
+    getFontOptions(): CustomFont[] {
+        const options: CustomFont[] = [
+            { value: '', label: '使用系统默认字体' }
+        ];
+        return options.concat(this.getFonts());
+    }
+
+    async addFont(font: CustomFont): Promise<void> {
+        this.settings.customFonts.push(font);
+        await this.save();
+    }
+
+    async updateFont(oldFontValue: string, newFont: CustomFont): Promise<void> {
+        const index = this.settings.customFonts.findIndex((font) => font.value === oldFontValue);
+        if (index !== -1) {
+            this.settings.customFonts[index] = newFont;
+            await this.save();
         }
     }
 
-    async updateFont(oldValue: string, newFont: { value: string; label: string }) {
-        const index = this.settings.customFonts.findIndex(f => f.value === oldValue);
-        if (index !== -1 && this.settings.customFonts) {
-            const font = this.settings.customFonts[index];
-            if (font && !font.isPreset) {
-                this.settings.customFonts[index] = { ...newFont, isPreset: false };
-                await this.saveSettings();
-            }
+    async deleteFont(fontValue: string): Promise<void> {
+        this.settings.customFonts = this.settings.customFonts.filter((font) => font.value !== fontValue);
+        await this.save();
+    }
+
+    getThemes(): Theme[] {
+        return this.settings.themes;
+    }
+
+    getSelectedTheme(): Theme {
+        const selected = this.settings.themes.find(theme => theme.id === this.settings.selectedThemeId);
+        const defaultTheme = this.settings.themes[0];
+        return selected || defaultTheme || { id: 'default', name: '默认主题', cssCode: '' };
+    }
+
+    async addTheme(name: string, cssCode: string, setAsDefault: boolean = true): Promise<void> {
+        const newTheme: Theme = {
+            id: `theme-${Date.now()}`,
+            name,
+            cssCode
+        };
+        this.settings.themes.push(newTheme);
+        if (setAsDefault) {
+            this.settings.selectedThemeId = newTheme.id;
         }
+        await this.save();
+    }
+
+    async updateTheme(themeId: string, newName: string, newCssCode: string): Promise<void> {
+        const theme = this.settings.themes.find(t => t.id === themeId);
+        if (theme) {
+            theme.name = newName;
+            theme.cssCode = newCssCode;
+            await this.save();
+        }
+    }
+
+    async updateThemeAndSetDefault(themeId: string, newName: string, newCssCode: string): Promise<void> {
+        const theme = this.settings.themes.find(t => t.id === themeId);
+        if (theme) {
+            theme.name = newName;
+            theme.cssCode = newCssCode;
+            this.settings.selectedThemeId = themeId;
+            await this.save();
+        }
+    }
+
+    async selectTheme(themeId: string): Promise<void> {
+        this.settings.selectedThemeId = themeId;
+        await this.save();
+    }
+
+    async toggleSectionCollapse(sectionKey: string): Promise<void> {
+        if (!this.settings.collapsedSections) {
+            this.settings.collapsedSections = {};
+        }
+        this.settings.collapsedSections[sectionKey] = !this.settings.collapsedSections[sectionKey];
+        await this.save();
+    }
+
+    isSectionCollapsed(sectionKey: string): boolean {
+        if (!this.settings.collapsedSections) {
+            return false;
+        }
+        return this.settings.collapsedSections[sectionKey] || false;
     }
 }

@@ -1,16 +1,20 @@
 import { App, Modal, Setting } from 'obsidian';
 import { BackgroundManager } from '../backgroundManager';
-import { builtinBg1, builtinBg2, builtinBg3, builtinBg4, builtinBg5, builtinBg6 } from '../assets/backgrounds/builtinBackgrounds';
+import { builtinBg1 } from '../assets/backgrounds/builtinBackgrounds';
 export interface BackgroundSettings {
     imageUrl: string;
     scale: number;
     position: { x: number; y: number };
+    backgroundRepeat?: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y';
+    opacity?: number;
 }
 
 export class BackgroundSettingModal extends Modal {
     private imageUrl = '';
     private scale = 1;
     private position: { x: number; y: number } = { x: 0, y: 0 };
+    private backgroundRepeat: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y' = 'no-repeat';
+    private opacity = 0.8;
     private initialSettings?: BackgroundSettings;
     private previewImage: HTMLElement | null = null;
     private dragEventCleanup: (() => void) | null = null;
@@ -33,6 +37,8 @@ export class BackgroundSettingModal extends Modal {
             this.imageUrl = this.initialSettings.imageUrl;
             this.scale = this.initialSettings.scale;
             this.position = { ...this.initialSettings.position };
+            this.backgroundRepeat = this.initialSettings.backgroundRepeat || 'no-repeat';
+            this.opacity = this.initialSettings.opacity ?? 0.8;
         }
     }
 
@@ -45,7 +51,7 @@ export class BackgroundSettingModal extends Modal {
     
         // 内置背景选择区
         const builtInBgArea = container.createEl('div', { cls: 'red-background-builtins' });
-        const builtInImages = [builtinBg1, builtinBg2, builtinBg3, builtinBg4, builtinBg5, builtinBg6];
+        const builtInImages = [builtinBg1];
         builtInImages.forEach(src => {
             const thumb = builtInBgArea.createEl('img', { attr: { src }, cls: 'red-bg-thumb' });
             thumb.addEventListener('click', () => {
@@ -56,7 +62,9 @@ export class BackgroundSettingModal extends Modal {
                     this.applyBackgroundStyles(this.previewImage, {
                         imageUrl: this.imageUrl,
                         scale: this.scale,
-                        position: this.position
+                        position: this.position,
+                        backgroundRepeat: this.backgroundRepeat,
+                        opacity: this.opacity
                     });
                     this.initDragAndScale();
                 }
@@ -75,7 +83,9 @@ export class BackgroundSettingModal extends Modal {
             this.applyBackgroundStyles(this.previewImage, {
                 imageUrl: this.imageUrl,
                 scale: this.scale,
-                position: this.position
+                position: this.position,
+                backgroundRepeat: this.backgroundRepeat,
+                opacity: this.opacity
             });
             this.initDragAndScale();
         }
@@ -91,12 +101,37 @@ export class BackgroundSettingModal extends Modal {
                 .setButtonText('清除图片')
                 .onClick(() => this.handleClearImage()));
 
+        // 背景平铺样式选择器
+        new Setting(container)
+            .setName('背景平铺')
+            .setDesc('选择背景图片的平铺方式')
+            .addDropdown(dropdown => {
+                dropdown.addOption('no-repeat', '不平铺');
+                dropdown.addOption('repeat', '平铺');
+                dropdown.addOption('repeat-x', '水平平铺');
+                dropdown.addOption('repeat-y', '垂直平铺');
+                
+                dropdown.setValue(this.backgroundRepeat);
+                dropdown.onChange(value => {
+                    this.backgroundRepeat = value as 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y';
+                    this.handleBackgroundRepeatChange();
+                });
+            });
+
         new Setting(container)
             .setName('缩放')
             .addSlider(slider => slider
-                .setLimits(0.1, 2, 0.01) // 将精度调整为0.01
+                .setLimits(0.1, 2, 0.01)
                 .setValue(this.scale)
                 .onChange(value => this.handleScaleChange(value)));
+
+        new Setting(container)
+            .setName('透明度')
+            .setDesc('调整背景图片的透明程度 (0-1)')
+            .addSlider(slider => slider
+                .setLimits(0, 1, 0.01)
+                .setValue(this.opacity)
+                .onChange(value => this.handleOpacityChange(value)));
 
         new Setting(container)
             .addButton(button => button
@@ -106,6 +141,32 @@ export class BackgroundSettingModal extends Modal {
             .addButton(button => button
                 .setButtonText('取消')
                 .onClick(() => this.handleCancel()));
+    }
+
+    private handleBackgroundRepeatChange() {
+        if (this.previewImage) {
+            this.applyBackgroundStyles(this.previewImage, {
+                imageUrl: this.imageUrl,
+                scale: this.scale,
+                position: this.position,
+                backgroundRepeat: this.backgroundRepeat
+            });
+        }
+        this.updateTargetPreview(true);
+    }
+
+    private handleOpacityChange(value: number) {
+        this.opacity = Math.max(0, Math.min(1, value));
+        if (this.previewImage) {
+            this.applyBackgroundStyles(this.previewImage, {
+                imageUrl: this.imageUrl,
+                scale: this.scale,
+                position: this.position,
+                backgroundRepeat: this.backgroundRepeat,
+                opacity: this.opacity
+            });
+        }
+        this.updateTargetPreview(true);
     }
 
     private handleImageUpload() {
@@ -122,7 +183,9 @@ export class BackgroundSettingModal extends Modal {
                         this.applyBackgroundStyles(this.previewImage, {
                             imageUrl: this.imageUrl,
                             scale: this.scale,
-                            position: this.position
+                            position: this.position,
+                            backgroundRepeat: this.backgroundRepeat,
+                            opacity: this.opacity
                         });
                         this.initDragAndScale();
                     }
@@ -141,7 +204,9 @@ export class BackgroundSettingModal extends Modal {
             this.applyBackgroundStyles(this.previewImage, {
                 imageUrl: this.imageUrl,
                 scale: this.scale,
-                position: this.position
+                position: this.position,
+                backgroundRepeat: this.backgroundRepeat,
+                opacity: this.opacity
             });
         }
         this.updateTargetPreview(true);
@@ -151,7 +216,9 @@ export class BackgroundSettingModal extends Modal {
         const backgroundSettings = {
             imageUrl: this.imageUrl,
             scale: this.scale,
-            position: this.position
+            position: this.position,
+            backgroundRepeat: this.backgroundRepeat,
+            opacity: this.opacity
         };
         this.onSubmit(backgroundSettings);
         this.close();
@@ -183,7 +250,9 @@ export class BackgroundSettingModal extends Modal {
                 this.applyBackgroundStyles(this.previewImage, {
                     imageUrl: this.imageUrl,
                     scale: this.scale,
-                    position: this.position
+                    position: this.position,
+                    backgroundRepeat: this.backgroundRepeat,
+                    opacity: this.opacity
                 });
             }
             this.updateTargetPreview(true);
@@ -218,7 +287,9 @@ export class BackgroundSettingModal extends Modal {
             this.applyBackgroundStyles(previewContainer as HTMLElement, {
                 imageUrl: this.imageUrl,
                 scale: this.scale,
-                position: this.position
+                position: this.position,
+                backgroundRepeat: this.backgroundRepeat,
+                opacity: this.opacity
             });
         } else if (!applyBackground && this.initialSettings?.imageUrl) {
             this.applyBackgroundStyles(previewContainer as HTMLElement, this.initialSettings);

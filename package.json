@@ -1,6 +1,6 @@
 {
 	"name": "note-to-red-cover",
-	"version": "1.0.0",
+	"version": "1.2.0",
 	"description": "将Obsidian笔记导出为小红书封面图片",
 	"main": "main.ts",
 	"scripts": {

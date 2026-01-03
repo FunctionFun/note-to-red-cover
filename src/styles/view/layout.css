@@ -47,6 +47,11 @@
     background-color: var(--background-primary);
 }
 
+.red-image-preview > * {
+    position: relative;
+    z-index: 1;
+}
+
 .red-image-preview p,
 .red-image-preview ul,
 .red-image-preview ol {
@@ -65,7 +70,15 @@
     padding-left: 1.5rem;
 }
 
-
+.red-image-preview img {
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 8px 0;
+}
 
 /* 内容区域容器 */
 .red-content-wrapper {
@@ -271,5 +284,31 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* 字体加载错误提示 */
+.red-font-load-error {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 59, 48, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
     }
 }
